@@ -1,0 +1,43 @@
+name = "nexus-ai"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+node_compat = true
+
+# ================================
+# KV NAMESPACES
+# ================================
+[[kv_namespaces]]
+binding = "CONFIG"
+id = "YOUR_KV_ID"
+preview_id = "YOUR_KV_PREVIEW_ID"
+
+# ================================
+# SECRETS STORE (for API keys)
+# ================================
+[secrets_store]
+binding = "SECRETS"
+store_id = "YOUR_SECRETS_STORE_ID"
+
+# ================================
+# BUILD CONFIGURATION
+# ================================
+[build]
+command = "pnpm build"
+cwd = "../.."
+
+[build.upload]
+format = "service-worker"
+main = "src/index.ts"
+
+# ================================
+# TYPESCRIPT CONFIG
+# ================================
+[typescript]
+strict = true
+
+# ================================
+# RATE LIMITS (per-worker)
+# ================================
+# Unlimited on paid plan, but set reasonable limits for free tier compatibility
+[limits]
+cpu_ms = 50  # 50ms CPU time per request
