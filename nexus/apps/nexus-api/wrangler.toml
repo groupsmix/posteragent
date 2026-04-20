@@ -1,0 +1,46 @@
+name = "nexus-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# ── D1 Database ──────────────────────────────────────────────
+[[d1_databases]]
+binding = "DB"
+database_name = "nexus-db"
+database_id = "YOUR_D1_ID"
+
+# ── KV Namespace (config + prompt cache) ─────────────────────
+[[kv_namespaces]]
+binding = "CONFIG"
+id = "YOUR_KV_ID"
+
+# ── R2 Bucket (assets) ──────────────────────────────────────
+[[r2_buckets]]
+binding = "ASSETS"
+bucket_name = "nexus-assets"
+
+# ── Cloudflare Images ────────────────────────────────────────
+# [images]
+# binding = "IMAGES"
+
+# ── Service Binding to nexus-ai worker ───────────────────────
+[[services]]
+binding = "AI_WORKER"
+service = "nexus-ai"
+
+# ── Cloudflare Workflows ────────────────────────────────────
+[[workflows]]
+name = "nexus-product-workflow"
+binding = "PRODUCT_WORKFLOW"
+class_name = "ProductWorkflow"
+
+# ── Secrets Store ────────────────────────────────────────────
+# [secrets_store]
+# binding = "SECRETS"
+# store_id = "YOUR_SECRETS_STORE_ID"
+
+# ── Cron Triggers ────────────────────────────────────────────
+# [triggers]
+# crons = ["0 6 * * *"]
+
+[vars]
+FRONTEND_URL = "http://localhost:3000"

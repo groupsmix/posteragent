@@ -1,0 +1,12 @@
+node_modules
+dist
+.next
+.turbo
+.wrangler
+.dev.vars
+.env
+.env.local
+*.log
+coverage
+.vercel
+node_modules

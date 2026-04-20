@@ -1,0 +1,13 @@
+name = "nexus-ai"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# ── KV Namespace (config + prompt cache) ─────────────────────
+[[kv_namespaces]]
+binding = "CONFIG"
+id = "YOUR_KV_ID"
+
+# ── Secrets Store ────────────────────────────────────────────
+# [secrets_store]
+# binding = "SECRETS"
+# store_id = "YOUR_SECRETS_STORE_ID"
