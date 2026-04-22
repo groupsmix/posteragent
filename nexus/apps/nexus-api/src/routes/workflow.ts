@@ -15,7 +15,7 @@ workflowRoutes.post('/start', async (c) => {
     }
     
     // Look up domain and category by slug
-    const domain = await env.DB.prepare(
+    const domain = await c.env.DB.prepare(
       'SELECT id FROM domains WHERE slug = ? AND is_active = 1'
     ).bind(body.domain_slug).first()
     
@@ -23,7 +23,7 @@ workflowRoutes.post('/start', async (c) => {
       return c.json({ error: 'Domain not found' }, 404)
     }
     
-    const category = await env.DB.prepare(
+    const category = await c.env.DB.prepare(
       'SELECT id FROM categories WHERE slug = ? AND domain_id = ? AND is_active = 1'
     ).bind(body.category_slug, domain.id).first()
     
@@ -35,26 +35,26 @@ workflowRoutes.post('/start', async (c) => {
     const productId = crypto.randomUUID()
     const now = new Date().toISOString()
     
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       INSERT INTO products (id, domain_id, category_id, user_input, status, created_at, updated_at)
       VALUES (?, ?, ?, ?, 'draft', ?, ?)
     `).bind(productId, domain.id, category.id, JSON.stringify(body.user_input || {}), now, now).run()
     
     // Create workflow run
     const runId = crypto.randomUUID()
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       INSERT INTO workflow_runs (id, product_id, status, created_at)
       VALUES (?, ?, 'queued', ?)
     `).bind(runId, productId, now).run()
     
     // Start the workflow via Cloudflare Workflows
     // For now, we'll mark it as running and let the worker process it
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       UPDATE workflow_runs SET status = 'running', started_at = ? WHERE id = ?
     `).bind(now, runId).run()
     
     // Update product status
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       UPDATE products SET status = 'running', updated_at = ? WHERE id = ?
     `).bind(now, productId).run()
     
@@ -75,7 +75,7 @@ workflowRoutes.get('/:id', async (c) => {
     const runId = c.req.param('id')
     
     // Fetch workflow run
-    const run = await env.DB.prepare(
+    const run = await c.env.DB.prepare(
       'SELECT * FROM workflow_runs WHERE id = ?'
     ).bind(runId).first()
     
@@ -84,7 +84,7 @@ workflowRoutes.get('/:id', async (c) => {
     }
     
     // Fetch all steps for this run
-    const steps = await env.DB.prepare(
+    const steps = await c.env.DB.prepare(
       'SELECT id, step_name, status, started_at, completed_at, error FROM workflow_steps WHERE run_id = ? ORDER BY step_order'
     ).bind(runId).all()
     
@@ -118,7 +118,7 @@ workflowRoutes.get('/:id/status', async (c) => {
   try {
     const runId = c.req.param('id')
     
-    const run = await env.DB.prepare(
+    const run = await c.env.DB.prepare(
       'SELECT id, status, current_step, error, started_at, completed_at FROM workflow_runs WHERE id = ?'
     ).bind(runId).first()
     
@@ -145,7 +145,7 @@ workflowRoutes.post('/:id/cancel', async (c) => {
   try {
     const runId = c.req.param('id')
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       UPDATE workflow_runs 
       SET status = 'cancelled', completed_at = ?, error = ?
       WHERE id = ? AND status IN ('queued', 'running')

@@ -27,7 +27,7 @@ assetRoutes.get('/', async (c) => {
     query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?'
     bindings.push(limit, offset)
     
-    const result = await env.DB.prepare(query).bind(...bindings).all()
+    const result = await c.env.DB.prepare(query).bind(...bindings).all()
     
     return c.json({
       assets: result.results,
@@ -45,7 +45,7 @@ assetRoutes.get('/', async (c) => {
 assetRoutes.get('/:id', async (c) => {
   try {
     const id = c.req.param('id')
-    const asset = await env.DB.prepare('SELECT * FROM assets WHERE id = ?').bind(id).first()
+    const asset = await c.env.DB.prepare('SELECT * FROM assets WHERE id = ?').bind(id).first()
     
     if (!asset) {
       return c.json({ error: 'Asset not found' }, 404)
@@ -64,7 +64,7 @@ assetRoutes.delete('/:id', async (c) => {
     const id = c.req.param('id')
     
     // Get asset info first
-    const asset = await env.DB.prepare('SELECT * FROM assets WHERE id = ?').bind(id).first() as any
+    const asset = await c.env.DB.prepare('SELECT * FROM assets WHERE id = ?').bind(id).first() as any
     
     if (!asset) {
       return c.json({ error: 'Asset not found' }, 404)
@@ -73,17 +73,17 @@ assetRoutes.delete('/:id', async (c) => {
     // Delete from all storage in parallel
     await Promise.allSettled([
       // Delete from D1
-      env.DB.prepare('DELETE FROM assets WHERE id = ?').bind(id).run(),
+      c.env.DB.prepare('DELETE FROM assets WHERE id = ?').bind(id).run(),
       
       // Delete from R2
-      asset.r2_key ? env.ASSETS.delete(asset.r2_key) : Promise.resolve(),
+      asset.r2_key ? c.env.ASSETS.delete(asset.r2_key) : Promise.resolve(),
       
       // Delete from CF Images
       asset.cf_image_id ? fetch(
-        `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/images/v1/${asset.cf_image_id}`,
+        `https://api.cloudflare.com/client/v4/accounts/${c.env.CF_ACCOUNT_ID}/images/v1/${asset.cf_image_id}`,
         {
           method: 'DELETE',
-          headers: { Authorization: `Bearer ${env.CF_API_TOKEN}` }
+          headers: { Authorization: `Bearer ${c.env.CF_API_TOKEN}` }
         }
       ) : Promise.resolve(),
     ])
@@ -99,7 +99,7 @@ assetRoutes.delete('/:id', async (c) => {
 assetRoutes.get('/:id/download', async (c) => {
   try {
     const id = c.req.param('id')
-    const asset = await env.DB.prepare('SELECT * FROM assets WHERE id = ?').bind(id).first() as any
+    const asset = await c.env.DB.prepare('SELECT * FROM assets WHERE id = ?').bind(id).first() as any
     
     if (!asset) {
       return c.json({ error: 'Asset not found' }, 404)
@@ -109,12 +109,9 @@ assetRoutes.get('/:id/download', async (c) => {
       return c.json({ error: 'No R2 file associated with this asset' }, 400)
     }
     
-    // Generate a signed URL for R2 (1 hour expiry)
-    const url = await env.ASSETS.createSignedUrl({
-      key: asset.r2_key,
-      expiresIn: 3600,
-    })
-    
+    // R2 presigned URLs need an account-level S3-compat signer; for now return
+    // a public path through the worker's /assets/:key download handler.
+    const url = `/assets/${encodeURIComponent(asset.r2_key as string)}`
     return c.json({ download_url: url, expires_in: 3600 })
   } catch (err) {
     console.error('Error generating download URL:', err)

@@ -93,7 +93,7 @@ app.notFound((c) => {
 // Export for Cloudflare Workers
 export default {
   fetch: app.fetch,
-  scheduled: async (controller: ScheduledController, env: Env, ctx: ExecutionContext) => {
+  scheduled: async (_controller: ScheduledController, env: Env, ctx: ExecutionContext) => {
     // Trend Radar - runs daily at 6am UTC
     console.log('Scheduled Trend Radar triggered')
     
@@ -125,7 +125,7 @@ export default {
 }
 
 // Helper function for trend radar
-async function fetchTrendAlerts(env: Env): Promise<Array<{
+async function fetchTrendAlerts(_env: Env): Promise<Array<{
   id: string
   trend_type: string
   keyword: string

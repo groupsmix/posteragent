@@ -57,7 +57,7 @@ export const IMAGE_VARIANTS: Record<string, ImageVariant> = {
     width: 1200,
     height: 1200,
     fit: 'cover',
-    format: 'jpg',
+    format: 'webp',
     quality: 95,
   },
 }
@@ -111,7 +111,7 @@ export class CFImagesAPI {
       body: formData,
     })
 
-    const result = await response.json()
+    const result = await response.json() as any
 
     if (!response.ok) {
       throw new CFImagesError(result.errors?.[0]?.message || 'Upload failed', result)
@@ -140,7 +140,7 @@ export class CFImagesAPI {
       body: JSON.stringify(body),
     })
 
-    const result = await response.json()
+    const result = await response.json() as any
 
     if (!response.ok) {
       throw new CFImagesError(result.errors?.[0]?.message || 'Upload failed', result)
@@ -160,7 +160,7 @@ export class CFImagesAPI {
 
     if (response.status === 404) return null
 
-    const result = await response.json()
+    const result = await response.json() as any
 
     if (!response.ok) {
       throw new CFImagesError(result.errors?.[0]?.message || 'Get image failed', result)
@@ -186,7 +186,7 @@ export class CFImagesAPI {
     const url = `${this.baseUrl}?${params.toString()}`
     const response = await fetch(url, { headers: this.headers })
 
-    const result = await response.json()
+    const result = await response.json() as any
 
     if (!response.ok) {
       throw new CFImagesError(result.errors?.[0]?.message || 'List images failed', result)
@@ -210,7 +210,7 @@ export class CFImagesAPI {
 
     if (response.status === 404) return
 
-    const result = await response.json()
+    const result = await response.json() as any
 
     if (!response.ok) {
       throw new CFImagesError(result.errors?.[0]?.message || 'Delete failed', result)

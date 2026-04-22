@@ -7,18 +7,18 @@ export const domainRoutes = new Hono<{ Bindings: Env }>()
 domainRoutes.get('/', async (c) => {
   try {
     // Try cache first
-    const cached = await env.CONFIG.get('config:domains')
+    const cached = await c.env.CONFIG.get('config:domains')
     if (cached) {
       return c.json(JSON.parse(cached))
     }
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       SELECT id, name, slug, description, icon, color, sort_order, is_active, created_at
       FROM domains WHERE is_active = 1 ORDER BY sort_order ASC
     `).all()
     
     // Cache for 1 hour
-    await env.CONFIG.put('config:domains', JSON.stringify(result.results), { expirationTtl: 3600 })
+    await c.env.CONFIG.put('config:domains', JSON.stringify(result.results), { expirationTtl: 3600 })
     
     return c.json(result.results)
   } catch (err) {
@@ -39,15 +39,15 @@ domainRoutes.post('/', async (c) => {
     const id = crypto.randomUUID()
     const now = new Date().toISOString()
     
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       INSERT INTO domains (id, name, slug, description, icon, color, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(id, name, slug, description || '', icon || '', color || '#6366f1', now, now).run()
     
     // Invalidate cache
-    await env.CONFIG.delete('config:domains')
+    await c.env.CONFIG.delete('config:domains')
     
-    const domain = await env.DB.prepare('SELECT * FROM domains WHERE id = ?').bind(id).first()
+    const domain = await c.env.DB.prepare('SELECT * FROM domains WHERE id = ?').bind(id).first()
     return c.json(domain, 201)
   } catch (err: any) {
     if (err.message?.includes('UNIQUE constraint')) {
@@ -62,7 +62,7 @@ domainRoutes.post('/', async (c) => {
 domainRoutes.get('/:id', async (c) => {
   try {
     const id = c.req.param('id')
-    const domain = await env.DB.prepare('SELECT * FROM domains WHERE id = ?').bind(id).first()
+    const domain = await c.env.DB.prepare('SELECT * FROM domains WHERE id = ?').bind(id).first()
     
     if (!domain) {
       return c.json({ error: 'Domain not found' }, 404)
@@ -95,7 +95,7 @@ domainRoutes.patch('/:id', async (c) => {
     
     values.push(id)
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       UPDATE domains SET ${setClause.join(', ')} WHERE id = ?
     `).bind(...values).run()
     
@@ -104,9 +104,9 @@ domainRoutes.patch('/:id', async (c) => {
     }
     
     // Invalidate cache
-    await env.CONFIG.delete('config:domains')
+    await c.env.CONFIG.delete('config:domains')
     
-    const domain = await env.DB.prepare('SELECT * FROM domains WHERE id = ?').bind(id).first()
+    const domain = await c.env.DB.prepare('SELECT * FROM domains WHERE id = ?').bind(id).first()
     return c.json(domain)
   } catch (err) {
     console.error('Error updating domain:', err)
@@ -119,15 +119,15 @@ domainRoutes.delete('/:id', async (c) => {
   try {
     const id = c.req.param('id')
     
-    const result = await env.DB.prepare('DELETE FROM domains WHERE id = ?').bind(id).run()
+    const result = await c.env.DB.prepare('DELETE FROM domains WHERE id = ?').bind(id).run()
     
     if (result.meta.changes === 0) {
       return c.json({ error: 'Domain not found' }, 404)
     }
     
     // Invalidate cache
-    await env.CONFIG.delete('config:domains')
-    await env.CONFIG.delete(`config:categories:${id}`)
+    await c.env.CONFIG.delete('config:domains')
+    await c.env.CONFIG.delete(`config:categories:${id}`)
     
     return c.json({ message: 'Domain deleted' })
   } catch (err) {
@@ -143,18 +143,18 @@ domainRoutes.get('/:id/categories', async (c) => {
     
     // Try cache first
     const cacheKey = `config:categories:${domainId}`
-    const cached = await env.CONFIG.get(cacheKey)
+    const cached = await c.env.CONFIG.get(cacheKey)
     if (cached) {
       return c.json(JSON.parse(cached))
     }
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       SELECT id, domain_id, name, slug, description, icon, sort_order, is_active, created_at
       FROM categories WHERE domain_id = ? AND is_active = 1 ORDER BY sort_order ASC
     `).bind(domainId).all()
     
     // Cache for 1 hour
-    await env.CONFIG.put(cacheKey, JSON.stringify(result.results), { expirationTtl: 3600 })
+    await c.env.CONFIG.put(cacheKey, JSON.stringify(result.results), { expirationTtl: 3600 })
     
     return c.json(result.results)
   } catch (err) {
@@ -176,15 +176,15 @@ domainRoutes.post('/:id/categories', async (c) => {
     const id = crypto.randomUUID()
     const now = new Date().toISOString()
     
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       INSERT INTO categories (id, domain_id, name,slug, description, icon, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(id, domainId, name, slug, description || '', icon || '', now).run()
     
     // Invalidate cache
-    await env.CONFIG.delete(`config:categories:${domainId}`)
+    await c.env.CONFIG.delete(`config:categories:${domainId}`)
     
-    const category = await env.DB.prepare('SELECT * FROM categories WHERE id = ?').bind(id).first()
+    const category = await c.env.DB.prepare('SELECT * FROM categories WHERE id = ?').bind(id).first()
     return c.json(category, 201)
   } catch (err) {
     console.error('Error creating category:', err)

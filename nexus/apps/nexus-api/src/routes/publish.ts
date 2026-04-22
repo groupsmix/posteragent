@@ -17,7 +17,7 @@ publishRoutes.post('/', async (c) => {
     
     for (const platformId of body.platform_ids) {
       // Fetch platform variant for this product and platform
-      const variant = await env.DB.prepare(`
+      const variant = await c.env.DB.prepare(`
         SELECT pv.*, pl.name as platform_name, pl.url as platform_url
         FROM platform_variants pv
         JOIN platforms pl ON pv.platform_id = pl.id
@@ -37,7 +37,7 @@ publishRoutes.post('/', async (c) => {
       
       // Update variant status to published
       const now = new Date().toISOString()
-      await env.DB.prepare(`
+      await c.env.DB.prepare(`
         UPDATE platform_variants SET status = 'published', published_at = ? WHERE id = ?
       `).bind(now, variant.id).run()
       
@@ -56,7 +56,7 @@ publishRoutes.post('/', async (c) => {
     
     if (allSuccess) {
       // Update product status to published
-      await env.DB.prepare(`
+      await c.env.DB.prepare(`
         UPDATE products SET status = 'published', updated_at = ? WHERE id = ?
       `).bind(new Date().toISOString(), body.product_id).run()
     }
@@ -91,7 +91,7 @@ publishRoutes.post('/schedule', async (c) => {
       created_at: new Date().toISOString(),
     })
     
-    await env.CONFIG.put(scheduleKey, scheduleData, { expirationTtl: 86400 * 30 }) // 30 days TTL
+    await c.env.CONFIG.put(scheduleKey, scheduleData, { expirationTtl: 86400 * 30 }) // 30 days TTL
     
     return c.json({
       message: 'Publishing scheduled',
@@ -109,7 +109,7 @@ publishRoutes.get('/:productId', async (c) => {
   try {
     const productId = c.req.param('productId')
     
-    const variants = await env.DB.prepare(`
+    const variants = await c.env.DB.prepare(`
       SELECT pv.id, pv.platform_id, pl.name as platform_name, 
              pv.status, pv.published_at, pv.published_url
       FROM platform_variants pv

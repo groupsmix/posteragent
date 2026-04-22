@@ -6,16 +6,16 @@ export const aiModelRoutes = new Hono<{ Bindings: Env }>()
 // GET /ai-models - List all AI models
 aiModelRoutes.get('/', async (c) => {
   try {
-    const cached = await env.CONFIG.get('config:ai_models')
+    const cached = await c.env.CONFIG.get('config:ai_models')
     if (cached) {
       return c.json(JSON.parse(cached))
     }
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       SELECT * FROM ai_models ORDER BY provider, name
     `).all()
     
-    await env.CONFIG.put('config:ai_models', JSON.stringify(result.results), { expirationTtl: 3600 })
+    await c.env.CONFIG.put('config:ai_models', JSON.stringify(result.results), { expirationTtl: 3600 })
     
     return c.json(result.results)
   } catch (err) {
@@ -28,7 +28,7 @@ aiModelRoutes.get('/', async (c) => {
 aiModelRoutes.get('/:id', async (c) => {
   try {
     const id = c.req.param('id')
-    const model = await env.DB.prepare('SELECT * FROM ai_models WHERE id = ?').bind(id).first()
+    const model = await c.env.DB.prepare('SELECT * FROM ai_models WHERE id = ?').bind(id).first()
     
     if (!model) {
       return c.json({ error: 'AI model not found' }, 404)
@@ -65,7 +65,7 @@ aiModelRoutes.patch('/:id', async (c) => {
     
     values.push(id)
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       UPDATE ai_models SET ${setClause.join(', ')} WHERE id = ?
     `).bind(...values).run()
     
@@ -73,9 +73,9 @@ aiModelRoutes.patch('/:id', async (c) => {
       return c.json({ error: 'AI model not found' }, 404)
     }
     
-    await env.CONFIG.delete('config:ai_models')
+    await c.env.CONFIG.delete('config:ai_models')
     
-    const model = await env.DB.prepare('SELECT * FROM ai_models WHERE id = ?').bind(id).first()
+    const model = await c.env.DB.prepare('SELECT * FROM ai_models WHERE id = ?').bind(id).first()
     return c.json(model)
   } catch (err) {
     console.error('Error updating AI model:', err)
@@ -89,15 +89,15 @@ aiModelRoutes.post('/:id/reset', async (c) => {
     const id = c.req.param('id')
     
     // Get model info
-    const model = await env.DB.prepare('SELECT * FROM ai_models WHERE id = ?').bind(id).first() as any
+    const model = await c.env.DB.prepare('SELECT * FROM ai_models WHERE id = ?').bind(id).first() as any
     
     if (!model) {
       return c.json({ error: 'AI model not found' }, 404)
     }
     
     // Clear rate limit keys from KV
-    await env.CONFIG.delete(`ai:rate_limit:${model.name}`)
-    await env.CONFIG.delete(`ai:quota:${model.name}`)
+    await c.env.CONFIG.delete(`ai:rate_limit:${model.name}`)
+    await c.env.CONFIG.delete(`ai:quota:${model.name}`)
     
     return c.json({ message: 'Rate limits reset', model: model.name })
   } catch (err) {

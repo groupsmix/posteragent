@@ -6,16 +6,16 @@ export const socialRoutes = new Hono<{ Bindings: Env }>()
 // GET /social - List all social channels
 socialRoutes.get('/', async (c) => {
   try {
-    const cached = await env.CONFIG.get('config:social_channels')
+    const cached = await c.env.CONFIG.get('config:social_channels')
     if (cached) {
       return c.json(JSON.parse(cached))
     }
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       SELECT * FROM social_channels WHERE is_active = 1 ORDER BY sort_order ASC
     `).all()
     
-    await env.CONFIG.put('config:social_channels', JSON.stringify(result.results), { expirationTtl: 3600 })
+    await c.env.CONFIG.put('config:social_channels', JSON.stringify(result.results), { expirationTtl: 3600 })
     
     return c.json(result.results)
   } catch (err) {
@@ -36,7 +36,7 @@ socialRoutes.post('/', async (c) => {
     const id = crypto.randomUUID()
     const now = new Date().toISOString()
     
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       INSERT INTO social_channels (id, name, slug, caption_max_chars, hashtag_count,
                                  tone, format, content_types, posting_mode,
                                  is_active, sort_order, created_at, updated_at)
@@ -48,9 +48,9 @@ socialRoutes.post('/', async (c) => {
       data.is_active ?? 1, data.sort_order ?? 0, now, now
     ).run()
     
-    await env.CONFIG.delete('config:social_channels')
+    await c.env.CONFIG.delete('config:social_channels')
     
-    const channel = await env.DB.prepare('SELECT * FROM social_channels WHERE id = ?').bind(id).first()
+    const channel = await c.env.DB.prepare('SELECT * FROM social_channels WHERE id = ?').bind(id).first()
     return c.json(channel, 201)
   } catch (err: any) {
     if (err.message?.includes('UNIQUE constraint')) {
@@ -65,7 +65,7 @@ socialRoutes.post('/', async (c) => {
 socialRoutes.get('/:id', async (c) => {
   try {
     const id = c.req.param('id')
-    const channel = await env.DB.prepare('SELECT * FROM social_channels WHERE id = ?').bind(id).first()
+    const channel = await c.env.DB.prepare('SELECT * FROM social_channels WHERE id = ?').bind(id).first()
     
     if (!channel) {
       return c.json({ error: 'Social channel not found' }, 404)
@@ -101,7 +101,7 @@ socialRoutes.patch('/:id', async (c) => {
     
     values.push(id)
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       UPDATE social_channels SET ${setClause.join(', ')} WHERE id = ?
     `).bind(...values).run()
     
@@ -109,9 +109,9 @@ socialRoutes.patch('/:id', async (c) => {
       return c.json({ error: 'Social channel not found' }, 404)
     }
     
-    await env.CONFIG.delete('config:social_channels')
+    await c.env.CONFIG.delete('config:social_channels')
     
-    const channel = await env.DB.prepare('SELECT * FROM social_channels WHERE id = ?').bind(id).first()
+    const channel = await c.env.DB.prepare('SELECT * FROM social_channels WHERE id = ?').bind(id).first()
     return c.json(channel)
   } catch (err) {
     console.error('Error updating social channel:', err)
@@ -124,13 +124,13 @@ socialRoutes.delete('/:id', async (c) => {
   try {
     const id = c.req.param('id')
     
-    const result = await env.DB.prepare('DELETE FROM social_channels WHERE id = ?').bind(id).run()
+    const result = await c.env.DB.prepare('DELETE FROM social_channels WHERE id = ?').bind(id).run()
     
     if (result.meta.changes === 0) {
       return c.json({ error: 'Social channel not found' }, 404)
     }
     
-    await env.CONFIG.delete('config:social_channels')
+    await c.env.CONFIG.delete('config:social_channels')
     
     return c.json({ message: 'Social channel deleted' })
   } catch (err) {

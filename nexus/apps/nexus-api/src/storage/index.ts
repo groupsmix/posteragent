@@ -5,7 +5,18 @@
 export * from './d1'
 export * from './kv'
 export * from './r2'
-export * from './cf-images'
+// cf-images re-exports a helper with the same name as r2's uploadProductImage;
+// import directly from './cf-images' when you need the CF Images uploader.
+export {
+  CFImagesAPI,
+  createCFImagesAPI,
+  IMAGE_VARIANTS,
+  type CFImageUploadResult,
+  type CFImageDetails,
+  type ImageVariant,
+  deleteProductImages,
+  CFImagesError,
+} from './cf-images'
 
 import type { D1Database, KVNamespace, R2Bucket } from '@cloudflare/workers-types'
 import { createCFImagesAPI, type CFImagesAPI } from './cf-images'

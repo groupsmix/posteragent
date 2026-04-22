@@ -4,7 +4,9 @@
 // Provides helpers for R2 bucket operations.
 // Used for: product assets, mockups, exports, temp files.
 
-import type { R2Bucket } from '@cloudflare/workers-types'
+import type { R2Bucket, R2Object, R2HTTPMetadata } from '@cloudflare/workers-types'
+
+export type R2ObjectMetadata = R2Object
 
 export interface R2Helper {
   put: R2Bucket['put']
@@ -53,10 +55,14 @@ export async function uploadFile(
     httpMetadata.contentType = options.contentType
   }
 
-  return bucket.put(key, data, {
+  const result = await bucket.put(key, data as ArrayBuffer, {
     httpMetadata,
     customMetadata: options?.customMetadata,
   })
+  if (!result) {
+    throw new Error(`Failed to upload to R2 at key: ${key}`)
+  }
+  return result
 }
 
 export async function downloadFile(
@@ -72,7 +78,8 @@ export async function getFileMetadata(
   bucket: R2Bucket,
   key: string
 ): Promise<R2ObjectMetadata | null> {
-  const object = await bucket.get(key, { onlyMetadata: true })
+  // R2 head request returns metadata without body
+  const object = await bucket.head(key)
   return object
 }
 
@@ -248,53 +255,4 @@ export function parseR2Key(key: string): { productId: string; type: string; file
   }
 }
 
-// ============================================================
-// Types
-// ============================================================
-
-type R2HTTPMetadata = {
-  contentType?: string
-  contentLanguage?:string
-  contentDisposition?: string
-  contentEncoding?: string
-  cacheControl?: string
-  cacheExpiry?: Date
-}
-
-interface R2Object {
-  key: string
-  size: number
-  httpEtag: string
-  eTag: string
-  checksums: {
-    md5: string
-    sha256?: string
-  }
-  httpMetadata: {
-    contentType?: string
-    contentLanguage?: string
-    contentDisposition?: string
-    contentEncoding?: string
-    cacheControl?: string
-    cacheExpiry?: Date
-  }
-  customMetadata: Record<string, string>
-  uploaded: Date
-}
-
-interface R2ObjectMetadata {
-  key: string
-  size: number
-  httpEtag: string
-  eTag: string
-  httpMetadata: {
-    contentType?: string
-    contentLanguage?: string
-    contentDisposition?: string
-    contentEncoding?: string
-    cacheControl?: string
-    cacheExpiry?: Date
-  }
-  customMetadata: Record<string, string>
-  uploaded: Date
-}
+// R2Object, R2HTTPMetadata, R2ObjectMetadata are imported from @cloudflare/workers-types above.
