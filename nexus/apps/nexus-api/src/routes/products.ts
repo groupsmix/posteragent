@@ -86,25 +86,25 @@ productRoutes.get('/:id', async (c) => {
     
     // Fetch platform variants
     const platformVariants = await c.env.DB.prepare(`
-      SELECT pv.id, pv.platform_id, pl.name as platform_name, pv.title, pv.description, 
-             pv.tags, pv.status
+      SELECT pv.id, pv.platform_id, pl.name as platform_name, pv.title, pv.description,
+             pv.tags, pv.price, pv.currency, pv.status
       FROM platform_variants pv
       JOIN platforms pl ON pv.platform_id = pl.id
       WHERE pv.product_id = ?
     `).bind(productId).all()
-    
+
     // Fetch social variants
     const socialVariants = await c.env.DB.prepare(`
-      SELECT sv.id, sv.channel_id, sc.name as channel_name, sv.content, sv.hashtags
+      SELECT sv.id, sv.channel_id, sc.name as channel_name, sv.content, sv.status
       FROM social_variants sv
       JOIN social_channels sc ON sv.channel_id = sc.id
       WHERE sv.product_id = ?
     `).bind(productId).all()
-    
+
     // Fetch reviews
     const reviews = await c.env.DB.prepare(`
-      SELECT id, reviewer_type, overall_score, approved, feedback, created_at
-      FROM reviews WHERE product_id = ? ORDER BY created_at DESC
+      SELECT id, ai_score, decision, section_scores, feedback, reviewed_at
+      FROM reviews WHERE product_id = ? ORDER BY reviewed_at DESC
     `).bind(productId).all()
     
     // Fetch workflow runs

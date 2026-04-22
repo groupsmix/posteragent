@@ -2,6 +2,7 @@ name = "nexus-api"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 node_compat = true
+migrations_dir = "../../migrations"
 
 # NOTE: The 15-step workflow runs via ctx.waitUntil() inside the fetch
 # handler (see apps/nexus-api/src/services/workflow-engine.ts). We do NOT
@@ -33,9 +34,9 @@ binding = "ASSETS"
 bucket_name = "nexus-assets"
 
 # ================================
-# CLOUDFLARE IMAGES
+# CLOUDFLARE IMAGES (Workers AI binding)
 # ================================
-[[images]]
+[images]
 binding = "IMAGES"
 
 # ================================
@@ -58,25 +59,4 @@ store_id = "YOUR_SECRETS_STORE_ID"
 [triggers]
 crons = ["0 6 * * *"]  # Daily at 6am UTC
 
-# ================================
-# BUILD CONFIGURATION
-# ================================
-[build]
-command = "pnpm build"
-cwd = "../.."
 
-[build.upload]
-format = "service-worker"
-main = "src/index.ts"
-
-# ================================
-# TYPESCRIPT CONFIG
-# ================================
-[typescript]
-strict = true
-
-# ================================
-# TAILWIND CSS (for potential SSR)
-# ================================
-# [assets]
-# include = ["**/*.css"]
