@@ -1,238 +1,438 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { api } from '@/lib/api'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { StatusBadge } from '@/components/shared/StatusBadge'
-import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
-import { Navbar } from '@/components/shared/Navbar'
-import { Check, X, Edit, Send, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { useParams, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { api } from '@/lib/api'
+import type { ProductDetail } from '@nexus/types'
+import { PageHeader, PageBody } from '@/components/shell/AppShell'
+import { ScoreBar } from '@/components/shared/ScoreBar'
+import { StatusBadge } from '@/components/shared/StatusBadge'
+import {
+  CheckCircle2, XCircle, AlertTriangle, ThumbsDown, ThumbsUp, Edit3,
+} from 'lucide-react'
 
 export default function ReviewPage() {
-  const params = useParams()
+  const params = useParams<{ productId: string }>()
+  const id = params?.productId as string
   const router = useRouter()
-  const [product, setProduct] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [p, setP] = useState<ProductDetail | null>(null)
+  const [tab, setTab] = useState<'platforms' | 'social'>('platforms')
+  const [activePlatform, setActivePlatform] = useState(0)
+  const [activeSocial, setActiveSocial] = useState(0)
+  const [feedback, setFeedback] = useState('')
+  const [showReject, setShowReject] = useState(false)
+  const [editing, setEditing] = useState<null | 'title' | 'description' | 'tags'>(null)
 
   useEffect(() => {
-    api.getProduct(params.productId as string)
-      .then(setProduct)
-      .finally(() => setLoading(false))
-  }, [params.productId])
+    api.getProductDetail(id).then(setP).catch(() => setP(null))
+  }, [id])
 
-  const handleApprove = async () => {
-    setActionLoading('approve')
-    try {
-      await api.approveProduct(params.productId as string)
-      router.push('/products')
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  const handleReject = async () => {
-    const feedback = prompt('Reason for rejection:')
-    if (!feedback) return
-    setActionLoading('reject')
-    try {
-      await api.rejectProduct(params.productId as string, feedback)
-      router.push('/products')
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  if (loading) {
+  if (!p) {
     return (
-      <div className="min-h-screen">
-        <Navbar />
-        <div className="flex justify-center py-16">
-          <LoadingSpinner size="lg" />
-        </div>
-      </div>
+      <PageBody>
+        <div className="text-sm text-muted-foreground">Loading review…</div>
+      </PageBody>
     )
   }
 
-  if (!product) {
-    return (
-      <div className="min-h-screen">
-        <Navbar />
-        <div className="text-center py-16">
-          <h2 className="text-2xl font-bold mb-2">Product Not Found</h2>
-          <Link href="/products" className="text-primary hover:underline">Back to Products</Link>
-        </div>
-      </div>
-    )
+  const approve = async () => {
+    await api.approveProduct(p.id)
+    router.push('/products')
   }
-
-  // Get the main content from workflow steps
-  const contentStep = product.workflow_runs?.[0]?.steps?.find((s: any) => 
-    s.step_name === 'generate_content' && s.status === 'completed'
-  )
+  const reject = async () => {
+    await api.rejectProduct(p.id, feedback || 'No reason given')
+    router.push('/graveyard')
+  }
+  const updateField = async (patch: Partial<ProductDetail>) => {
+    setP({ ...p, ...patch })
+    await api.updateProductSection(p.id, patch)
+    setEditing(null)
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <div className="max-w-4xl mx-auto p-8">
-        <nav className="text-sm text-muted-foreground mb-6">
-          <Link href="/products" className="hover:text-foreground">Products</Link>
-          <span className="mx-2">›</span>
-          <span>Review</span>
-        </nav>
-
-        <div className="flex items-start justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">
-              {product.name || product.niche || 'Untitled Product'}
-            </h1>
-            <div className="flex items-center gap-4">
-              <StatusBadge status={product.status} />
-              <span className="text-sm text-muted-foreground">
-                {product.domain_name} • {product.category_name}
+    <>
+      <PageHeader
+        title={
+          <span>
+            CEO Review{' '}
+            <span className="text-muted-foreground font-normal text-base">· {p.name}</span>
+          </span>
+        }
+        subtitle={<span>{p.domain_name} → {p.category_name}</span>}
+        actions={
+          <div className="flex items-center gap-3">
+            <StatusBadge status={p.status} />
+            <div className="rounded-full border border-border bg-card px-3 py-1.5 text-sm">
+              AI score{' '}
+              <span className="font-mono font-bold ml-1 text-gradient">
+                {p.ai_score.toFixed(1)}
               </span>
-              {product.ai_score && (
-                <span className="text-sm font-medium">
-                  AI Score: {product.ai_score}/10
-                </span>
-              )}
+              <span className="text-muted-foreground">/10</span>
             </div>
+          </div>
+        }
+      />
+      <PageBody>
+        <div className="grid lg:grid-cols-[1fr_340px] gap-6">
+          <div className="space-y-5">
+            <Section
+              title="Title"
+              actions={
+                <button
+                  onClick={() => setEditing('title')}
+                  className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                >
+                  <Edit3 className="h-3 w-3" /> Edit
+                </button>
+              }
+            >
+              <div className="space-y-2">
+                {p.title_variants.map((t, i) => (
+                  <label
+                    key={i}
+                    className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition ${
+                      p.selected_title_index === i
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/30'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="title"
+                      checked={p.selected_title_index === i}
+                      onChange={() => updateField({ selected_title_index: i })}
+                      className="mt-1"
+                    />
+                    <div className="text-sm">{t}</div>
+                  </label>
+                ))}
+              </div>
+            </Section>
+
+            <Section
+              title="Description"
+              actions={
+                <button
+                  onClick={() => setEditing(editing === 'description' ? null : 'description')}
+                  className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                >
+                  <Edit3 className="h-3 w-3" /> Edit
+                </button>
+              }
+            >
+              {editing === 'description' ? (
+                <textarea
+                  defaultValue={p.description}
+                  onBlur={(e) => updateField({ description: e.target.value })}
+                  className="input min-h-32 w-full"
+                />
+              ) : (
+                <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                  {p.description}
+                </p>
+              )}
+            </Section>
+
+            <Section
+              title="Tags"
+              actions={
+                <button
+                  onClick={() => setEditing(editing === 'tags' ? null : 'tags')}
+                  className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                >
+                  <Edit3 className="h-3 w-3" /> Edit
+                </button>
+              }
+            >
+              {editing === 'tags' ? (
+                <input
+                  defaultValue={p.tags.join(', ')}
+                  onBlur={(e) =>
+                    updateField({
+                      tags: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                    })
+                  }
+                  className="input w-full"
+                />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {p.tags.map((t) => (
+                    <span key={t} className="text-xs rounded-full bg-muted px-2.5 py-1">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </Section>
+
+            <Section title="Pricing">
+              <div className="flex items-center justify-between">
+                <div className="text-3xl font-bold tabular-nums">
+                  ${p.price.toFixed(0)}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">
+                    {p.currency}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                    Revenue est. (90 days)
+                  </div>
+                  <div className="text-sm font-mono">
+                    ${p.revenue_estimate_detail?.min ?? '—'}–${p.revenue_estimate_detail?.max ?? '—'}
+                  </div>
+                </div>
+              </div>
+            </Section>
+
+            <Section title="Variations">
+              <div className="flex border-b border-border mb-3">
+                <button
+                  onClick={() => setTab('platforms')}
+                  className={`px-3 py-2 text-sm border-b-2 -mb-px ${
+                    tab === 'platforms'
+                      ? 'border-primary text-foreground'
+                      : 'border-transparent text-muted-foreground'
+                  }`}
+                >
+                  Platforms ({p.platform_variants.length})
+                </button>
+                <button
+                  onClick={() => setTab('social')}
+                  className={`px-3 py-2 text-sm border-b-2 -mb-px ${
+                    tab === 'social'
+                      ? 'border-primary text-foreground'
+                      : 'border-transparent text-muted-foreground'
+                  }`}
+                >
+                  Social ({p.social_variants.length})
+                </button>
+              </div>
+              {tab === 'platforms' ? (
+                <>
+                  <div className="flex gap-1 mb-3 flex-wrap">
+                    {p.platform_variants.map((v, i) => (
+                      <button
+                        key={v.id}
+                        onClick={() => setActivePlatform(i)}
+                        className={`text-xs px-2.5 py-1 rounded-full border ${
+                          activePlatform === i
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border'
+                        }`}
+                      >
+                        {v.platform_name}
+                      </button>
+                    ))}
+                  </div>
+                  {p.platform_variants[activePlatform] && (
+                    <div className="rounded-xl border border-border p-4 space-y-3 bg-background/50">
+                      <div className="font-semibold text-sm">
+                        {p.platform_variants[activePlatform].title}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {p.platform_variants[activePlatform].description}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {p.platform_variants[activePlatform].tags.map((t: string) => (
+                          <span key={t} className="text-[11px] rounded bg-muted px-1.5 py-0.5">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="text-sm font-mono">
+                        ${p.platform_variants[activePlatform].price}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex gap-1 mb-3 flex-wrap">
+                    {p.social_variants.map((v, i) => (
+                      <button
+                        key={v.id}
+                        onClick={() => setActiveSocial(i)}
+                        className={`text-xs px-2.5 py-1 rounded-full border ${
+                          activeSocial === i
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border'
+                        }`}
+                      >
+                        {v.channel_name}
+                      </button>
+                    ))}
+                  </div>
+                  {p.social_variants[activeSocial] && (
+                    <div className="rounded-xl border border-border p-4 space-y-2 bg-background/50">
+                      {p.social_variants[activeSocial].content.hook && (
+                        <div className="text-xs text-muted-foreground italic">
+                          Hook: {p.social_variants[activeSocial].content.hook}
+                        </div>
+                      )}
+                      <div className="text-sm whitespace-pre-wrap">
+                        {p.social_variants[activeSocial].content.caption}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {p.social_variants[activeSocial].content.hashtags.map((h: string) => (
+                          <span key={h} className="text-[11px] text-primary">
+                            {h}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </Section>
+
+            {p.launch_boost_pack && (
+              <Section title="Launch boost pack">
+                <div className="space-y-2">
+                  {p.launch_boost_pack.posts.map((post, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-3 rounded-xl border border-border p-3 text-sm"
+                    >
+                      <div className="text-[11px] font-mono uppercase text-muted-foreground tabular-nums w-12 shrink-0">
+                        {post.when}
+                      </div>
+                      <div className="text-xs font-medium w-24 shrink-0">{post.channel}</div>
+                      <div className="text-foreground/80">{post.content}</div>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+          </div>
+
+          <div className="space-y-5">
+            <Section title="Section scores">
+              <div className="space-y-3">
+                {Object.entries(p.section_scores).map(([k, v]) => (
+                  <ScoreBar key={k} value={v as number} label={k} />
+                ))}
+              </div>
+            </Section>
+
+            {p.issues.length > 0 && (
+              <Section title="Issues to fix">
+                <ul className="space-y-3">
+                  {p.issues.map((iss, i) => (
+                    <li key={i} className="text-sm">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+                        <span className="font-medium capitalize">{iss.section}</span>
+                      </div>
+                      <div className="text-muted-foreground mt-0.5">{iss.problem}</div>
+                      <div className="text-success mt-0.5">→ {iss.fix}</div>
+                    </li>
+                  ))}
+                </ul>
+              </Section>
+            )}
+
+            <Section title="Listing health">
+              <ul className="space-y-1.5 text-sm">
+                {p.health_check.map((h, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    {h.status === 'pass' && (
+                      <CheckCircle2 className="h-4 w-4 text-success shrink-0 mt-0.5" />
+                    )}
+                    {h.status === 'warn' && (
+                      <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                    )}
+                    {h.status === 'fail' && (
+                      <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <div>{h.label}</div>
+                      {h.detail && (
+                        <div className="text-[11px] text-muted-foreground">{h.detail}</div>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+
+            {p.competitor_gap?.detected && (
+              <Section title="Competitor gap">
+                <div className="text-sm rounded-xl bg-success/10 border border-success/30 p-3 text-success">
+                  {p.competitor_gap.summary}
+                </div>
+              </Section>
+            )}
           </div>
         </div>
 
-        {/* AI Content */}
-        {contentStep?.output_data && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="text-lg">Generated Content</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {(() => {
-                try {
-                  const output = JSON.parse(contentStep.output_data)
-                  return (
-                    <div className="space-y-4">
-                      {output.title && (
-                        <div>
-                          <h3 className="font-semibold mb-1">Title</h3>
-                          <p className="text-lg">{output.title}</p>
-                        </div>
-                      )}
-                      {output.description && (
-                        <div>
-                          <h3 className="font-semibold mb-1">Description</h3>
-                          <p className="whitespace-pre-wrap">{output.description}</p>
-                        </div>
-                      )}
-                      {output.tags && output.tags.length > 0 && (
-                        <div>
-                          <h3 className="font-semibold mb-1">Tags</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {output.tags.map((tag: string, i: number) => (
-                              <span key={i} className="px-2 py-1 bg-muted rounded text-sm">{tag}</span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                } catch {
-                  return <p className="text-muted-foreground">Content preview unavailable</p>
-                }
-              })()}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Platform Variants */}
-        {product.platform_variants?.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="text-lg">Platform Variants</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {product.platform_variants.map((variant: any) => (
-                  <div key={variant.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">{variant.platform_name}</h4>
-                      <StatusBadge status={variant.status} />
-                    </div>
-                    {variant.title && <p className="text-sm mb-1"><strong>Title:</strong> {variant.title}</p>}
-                    {variant.description && <p className="text-sm text-muted-foreground">{variant.description}</p>}
-                  </div>
-                ))}
+        <div className="sticky bottom-0 mt-8 -mx-6 md:-mx-8 px-6 md:px-8 py-4 border-t border-border bg-background/95 backdrop-blur flex items-center justify-between gap-3">
+          <Link href="/products" className="text-sm text-muted-foreground hover:text-foreground">
+            ← Back to products
+          </Link>
+          <div className="flex items-center gap-2">
+            {showReject ? (
+              <div className="flex items-center gap-2">
+                <input
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="What's wrong? (sent back to AI)"
+                  className="input w-72"
+                />
+                <button
+                  onClick={reject}
+                  className="inline-flex items-center gap-1 rounded-lg bg-destructive text-destructive-foreground px-4 py-2 text-sm font-medium"
+                >
+                  <ThumbsDown className="h-4 w-4" /> Reject
+                </button>
+                <button
+                  onClick={() => setShowReject(false)}
+                  className="text-sm text-muted-foreground px-2"
+                >
+                  Cancel
+                </button>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Reviews */}
-        {product.reviews?.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="text-lg">Review History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {product.reviews.map((review: any) => (
-                  <div key={review.id} className="border rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-medium capitalize">{review.reviewer_type}</span>
-                      <StatusBadge status={review.approved ? 'approved' : 'rejected'} />
-                    </div>
-                    <p className="text-sm">{review.feedback}</p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {new Date(review.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Action Buttons */}
-        {product.status === 'pending_review' && (
-          <div className="flex gap-4">
-            <Button
-              onClick={handleApprove}
-              disabled={actionLoading !== null}
-              className="flex-1 bg-green-600 hover:bg-green-700"
-              size="lg"
-            >
-              {actionLoading === 'approve' ? (
-                <LoadingSpinner size="sm" />
-              ) : (
-                <>
-                  <Check className="w-5 h-5 mr-2" />
-                  Approve & Publish
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={handleReject}
-              disabled={actionLoading !== null}
-              variant="destructive"
-              className="flex-1"
-              size="lg"
-            >
-              {actionLoading === 'reject' ? (
-                <LoadingSpinner size="sm" />
-              ) : (
-                <>
-                  <X className="w-5 h-5 mr-2" />
-                  Reject
-                </>
-              )}
-            </Button>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowReject(true)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-border px-4 py-2 text-sm hover:border-destructive/50 hover:text-destructive"
+                >
+                  <ThumbsDown className="h-4 w-4" /> Reject
+                </button>
+                <button
+                  onClick={approve}
+                  className="inline-flex items-center gap-1 rounded-lg bg-gradient-primary text-primary-foreground px-5 py-2 text-sm font-semibold shadow-glow"
+                >
+                  <ThumbsUp className="h-4 w-4" /> Approve
+                </button>
+              </>
+            )}
           </div>
-        )}
+        </div>
+      </PageBody>
+    </>
+  )
+}
+
+function Section({
+  title,
+  actions,
+  children,
+}: {
+  title: string
+  actions?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section className="rounded-2xl border border-border bg-card p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          {title}
+        </h3>
+        {actions}
       </div>
-    </div>
+      {children}
+    </section>
   )
 }

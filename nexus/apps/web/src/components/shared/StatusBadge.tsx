@@ -1,43 +1,32 @@
-import { cn } from '@/lib/utils'
+import { cn } from "@/lib/utils";
 
-type Status = 'draft' | 'running' | 'completed' | 'failed' | 'pending_review' | 'approved' | 'published' | 'rejected' | 'archived'
+const tones = {
+  neutral: "bg-muted text-muted-foreground border-border",
+  primary: "bg-primary/15 text-primary border-primary/30",
+  success: "bg-success/15 text-success border-success/30",
+  warning: "bg-warning/15 text-warning border-warning/30",
+  destructive: "bg-destructive/15 text-destructive border-destructive/30",
+} as const;
 
-const statusStyles: Record<Status, string> = {
-  draft: 'bg-gray-100 text-gray-700',
-  running: 'bg-blue-100 text-blue-700',
-  completed: 'bg-green-100 text-green-700',
-  failed: 'bg-red-100 text-red-700',
-  pending_review: 'bg-yellow-100 text-yellow-700',
-  approved: 'bg-green-100 text-green-700',
-  published: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-  archived: 'bg-gray-100 text-gray-500',
-}
-
-const statusLabels: Record<Status, string> = {
-  draft: 'Draft',
-  running: 'Running',
-  completed: 'Completed',
-  failed: 'Failed',
-  pending_review: 'Pending Review',
-  approved: 'Approved',
-  published: 'Published',
-  rejected: 'Rejected',
-  archived: 'Archived',
-}
-
-interface StatusBadgeProps {
-  status: string
-  className?: string
-}
-
-export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const style = statusStyles[status as Status] || 'bg-gray-100 text-gray-700'
-  const label = statusLabels[status as Status] || status
-
+export function StatusBadge({
+  status, tone,
+}: { status: string; tone?: keyof typeof tones }) {
+  const auto: keyof typeof tones =
+    /approved|published|completed|active|pass/i.test(status) ? "success" :
+    /running|pending|warn/i.test(status) ? "warning" :
+    /failed|rejected|graveyard|errored|fail/i.test(status) ? "destructive" :
+    /draft|sleeping|waiting|queued/i.test(status) ? "neutral" : "primary";
+  const t = tone || auto;
   return (
-    <span className={cn('inline-flex px-2 py-1 rounded-full text-xs font-medium', style, className)}>
-      {label}
+    <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider", tones[t])}>
+      <span className={cn("h-1.5 w-1.5 rounded-full",
+        t === "success" && "bg-success",
+        t === "warning" && "bg-warning animate-pulse",
+        t === "destructive" && "bg-destructive",
+        t === "neutral" && "bg-muted-foreground",
+        t === "primary" && "bg-primary",
+      )} />
+      {status.replace(/_/g, " ")}
     </span>
-  )
+  );
 }

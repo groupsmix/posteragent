@@ -1,9 +1,10 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import { AppShell } from '@/components/shell/AppShell'
 
 export const metadata: Metadata = {
-  title: 'NEXUS - AI Product Creator',
-  description: 'Create products with AI-powered workflows',
+  title: 'NEXUS — AI Product Engine',
+  description: 'Personal AI engine for product creation and publishing',
 }
 
 export default function RootLayout({
@@ -12,11 +13,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="dark">
       <body className="min-h-screen bg-background font-sans antialiased">
-        <div className="flex flex-col min-h-screen">
-          {children}
-        </div>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   )
