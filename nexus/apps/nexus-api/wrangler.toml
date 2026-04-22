@@ -16,15 +16,15 @@ migrations_dir = "../../migrations"
 [[d1_databases]]
 binding = "DB"
 database_name = "nexus-db"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "5fcbccaa-3273-49a9-a76a-b001534e994c"
 
 # ================================
 # KV NAMESPACES
 # ================================
 [[kv_namespaces]]
 binding = "CONFIG"
-id = "YOUR_KV_ID"
-preview_id = "YOUR_KV_PREVIEW_ID"
+id = "bf73ee5c9c834e84a35e97ea9d0a2c66"
+preview_id = "a2c8d21fd49a4744a677e377c4f5f650"
 
 # ================================
 # R2 BUCKETS
@@ -47,11 +47,12 @@ binding = "AI_WORKER"
 service = "nexus-ai"
 
 # ================================
-# SECRETS STORE
+# SECRETS STORE (optional — worker falls back to plain secrets)
 # ================================
-[secrets_store]
-binding = "SECRETS"
-store_id = "YOUR_SECRETS_STORE_ID"
+# Uncomment and set store_id after creating a Cloudflare Secrets Store.
+# [secrets_store]
+# binding = "SECRETS"
+# store_id = "YOUR_SECRETS_STORE_ID"
 
 # ================================
 # SCHEDULED TRIGGERS (Trend Radar)

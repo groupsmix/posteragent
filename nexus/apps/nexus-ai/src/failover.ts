@@ -8,9 +8,11 @@ import type { AIRegistryEntry, TaskType, FailoverResult, FailoverOptions, AIStat
 
 interface Env {
   CONFIG: KVNamespace
-  SECRETS: {
+  SECRETS?: {
     get(key: string): Promise<string | null>
   }
+  // Plain worker secrets fall back here (wrangler secret put KEY).
+  [key: string]: unknown
 }
 
 /**
@@ -603,12 +605,16 @@ async function callSerpAPI(
 // ============================================================
 
 async function getSecret(env: Env, key: string): Promise<string | null> {
-  if (!env.SECRETS) return null
-  try {
-    return await env.SECRETS.get(key)
-  } catch {
-    return null
+  // Prefer Cloudflare Secrets Store binding when available.
+  if (env.SECRETS) {
+    try {
+      const v = await env.SECRETS.get(key)
+      if (v) return v
+    } catch { /* fall through */ }
   }
+  // Fall back to plain worker secrets (wrangler secret put KEY).
+  const v = (env as unknown as Record<string, unknown>)[key]
+  return typeof v === 'string' && v.length > 0 ? v : null
 }
 
 // Cost per 1M tokens lookup (reserved for future per-model pricing refinement)

@@ -9,9 +9,10 @@ import type { TaskType, AIRunTaskRequest, AIRunTaskResponse } from './types'
 
 interface Env {
   CONFIG: KVNamespace
-  SECRETS: {
+  SECRETS?: {
     get: (key: string) => Promise<string | null>
   }
+  [key: string]: unknown
 }
 
 const app = new Hono<{ Bindings: Env }>()
