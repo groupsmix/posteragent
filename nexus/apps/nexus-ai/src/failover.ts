@@ -141,7 +141,7 @@ async function callModelWithTimeout(
   prompt: string,
   timeoutMs: number,
   outputFormat: string,
-  env: Env
+  _env: Env
 ): Promise<{ output: string; tokens_used: number; cost_usd: number }> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
@@ -288,7 +288,7 @@ async function callOpenAICompatible(
   })
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: { message: response.statusText } }))
+    const err = await (response.json().catch(() => ({ error: { message: response.statusText } })) as Promise<{ error?: { message?: string } }>)
     const error: any = new Error(err?.error?.message || response.statusText)
     error.status = response.status
     throw error
@@ -331,13 +331,13 @@ async function callAnthropic(
   })
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: { message: response.statusText } }))
+    const err = await (response.json().catch(() => ({ error: { message: response.statusText } })) as Promise<{ error?: { message?: string } }>)
     const error: any = new Error(err?.error?.message || response.statusText)
     error.status = response.status
     throw error
   }
 
-  const data = await response.json()
+  const data = await response.json() as any
   const tokensUsed = data.usage?.input_tokens + data.usage?.output_tokens || 0
   const costUsd = (tokensUsed / 1_000_000) * 15 // Claude Opus rate
 
@@ -377,7 +377,7 @@ async function callGemini(
     throw error
   }
 
-  const data = await response.json()
+  const data = await response.json() as any
   return {
     output: data.candidates[0].content.parts[0].text,
     tokens_used: 0,
@@ -416,7 +416,7 @@ async function callFal(
       throw error
     }
 
-    const data = await response.json()
+    const data = await response.json() as any
     return {
       output: data.images[0].url,
       tokens_used: 0,
@@ -456,7 +456,7 @@ async function callHuggingFace(
     throw error
   }
 
-  const data = await response.json()
+  const data = await response.json() as any
   const output = Array.isArray(data) ? data[0].generated_text : data
 
   return {
@@ -497,7 +497,7 @@ async function callTavily(
     throw error
   }
 
-  const data = await response.json()
+  const data = await response.json() as any
 
   return {
     output: JSON.stringify({
@@ -542,7 +542,7 @@ async function callExa(
     throw error
   }
 
-  const data = await response.json()
+  const data = await response.json() as any
 
   return {
     output: JSON.stringify({
@@ -582,7 +582,7 @@ async function callSerpAPI(
     throw error
   }
 
-  const data = await response.json()
+  const data = await response.json() as any
   const results = data.organic_results?.slice(0, 10) || []
 
   return {
@@ -611,8 +611,8 @@ async function getSecret(env: Env, key: string): Promise<string | null> {
   }
 }
 
-// Cost per 1M tokens lookup
-const COST_PER_1M: Record<string, number> = {
+// Cost per 1M tokens lookup (reserved for future per-model pricing refinement)
+export const COST_PER_1M: Record<string, number> = {
   'deepseek-chat': 0.27,
   'deepseek-reasoner': 0.55,
   'Qwen/Qwen2.5-72B-Instruct': 0.20,

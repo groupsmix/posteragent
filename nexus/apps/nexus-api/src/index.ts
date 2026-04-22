@@ -93,50 +93,86 @@ app.notFound((c) => {
 // Export for Cloudflare Workers
 export default {
   fetch: app.fetch,
-  scheduled: async (controller: ScheduledController, env: Env, ctx: ExecutionContext) => {
-    // Trend Radar - runs daily at 6am UTC
-    console.log('Scheduled Trend Radar triggered')
-    
-    // Fetch trend alerts and save to database
-    try {
-      const trends = await fetchTrendAlerts(env)
-      for (const trend of trends) {
-        await env.DB.prepare(`
-          INSERT OR REPLACE INTO trend_alerts 
-          (id, trend_type, keyword, source, detected_at, engagement_score, metadata)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          trend.id,
-          trend.trend_type,
-          trend.keyword,
-          trend.source,
-          trend.detected_at,
-          trend.engagement_score,
-          JSON.stringify(trend.metadata || {})
-        ).run()
-      }
-    } catch (err) {
-      console.error('Trend Radar error:', err)
-    }
-    
-    // Schedule next check
-    ctx.waitUntil(Promise.resolve())
+  scheduled: async (_controller: ScheduledController, env: Env, ctx: ExecutionContext) => {
+    console.log('[cron] Scheduled Trend Radar triggered')
+    ctx.waitUntil(runTrendRadar(env))
   },
 }
 
-// Helper function for trend radar
-async function fetchTrendAlerts(env: Env): Promise<Array<{
-  id: string
-  trend_type: string
-  keyword: string
-  source: string
-  detected_at: string
-  engagement_score: number
-  metadata: Record<string, any>
-}>> {
-  // This would normally call the AI worker to research trends
-  // For now, return empty array as placeholder
-  return []
+// ------------------------------------------------------------
+// Trend radar cron — asks nexus-ai for rising topics per active domain,
+// upserts them into `trend_alerts` for the UI to surface.
+// ------------------------------------------------------------
+async function runTrendRadar(env: Env): Promise<void> {
+  try {
+    const enabled = await env.DB
+      .prepare("SELECT value FROM settings WHERE key = 'trend_radar_enabled' LIMIT 1")
+      .first<{ value: string }>()
+      .catch(() => null)
+    if (enabled?.value === 'false') {
+      console.log('[cron] trend radar disabled in settings, skipping')
+      return
+    }
+
+    const domains = await env.DB
+      .prepare('SELECT id, name, slug FROM domains WHERE is_active = 1 LIMIT 20')
+      .all<{ id: string; name: string; slug: string }>()
+
+    for (const d of domains.results ?? []) {
+      try {
+        const prompt = `Return JSON {trends:[{keyword:string, score:number (0-100), source:string, suggested_niche:string, demand_window:"rising"|"hot"|"peak"}]} for up to 5 trending topics in the "${d.name}" product domain this week. Be specific, not generic.`
+        const res = await env.AI_WORKER.fetch(
+          new Request('https://nexus-ai/task', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ taskType: 'trend_analysis', prompt, outputFormat: 'json', timeoutMs: 60000 }),
+          })
+        )
+        if (!res.ok) {
+          console.error(`[cron] trend radar: AI failed for ${d.slug}:`, res.status)
+          continue
+        }
+        const data = (await res.json()) as { output?: string }
+        let parsed: any = null
+        try { parsed = JSON.parse(data.output ?? '') } catch { parsed = null }
+        const trends: Array<{
+          keyword: string
+          score: number
+          source: string
+          suggested_niche?: string
+          demand_window?: string
+        }> = Array.isArray(parsed?.trends) ? parsed.trends : []
+
+        const now = new Date().toISOString()
+        for (const t of trends) {
+          if (!t?.keyword) continue
+          await env.DB
+            .prepare(
+              `INSERT INTO trend_alerts
+                 (id, domain_id, trend_keyword, trend_score, demand_window, source, suggested_niche, status, detected_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 'new', ?)`
+            )
+            .bind(
+              crypto.randomUUID(),
+              d.id,
+              t.keyword,
+              Number(t.score ?? 0),
+              t.demand_window ?? null,
+              t.source ?? 'ai',
+              t.suggested_niche ?? null,
+              now,
+            )
+            .run()
+            .catch(() => void 0)
+        }
+        console.log(`[cron] trend radar: stored ${trends.length} trends for ${d.slug}`)
+      } catch (inner) {
+        console.error(`[cron] trend radar: inner error for ${d.slug}:`, inner)
+      }
+    }
+  } catch (err) {
+    console.error('[cron] Trend Radar error:', err)
+  }
 }
 
 export { app }

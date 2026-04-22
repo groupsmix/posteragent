@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { Navbar } from '@/components/shared/Navbar'
-import { Link } from 'next/link'
+import Link from 'next/link'
 
 export default function WinnersPage() {
   const [patterns, setPatterns] = useState<any[]>([])
@@ -14,7 +14,7 @@ export default function WinnersPage() {
 
   useEffect(() => {
     api.getWinnerPatterns()
-      .then((data) => setPatterns(data.patterns || data || []))
+      .then((data: any) => setPatterns(data.patterns || data || []))
       .finally(() => setLoading(false))
   }, [])
 

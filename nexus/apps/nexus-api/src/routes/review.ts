@@ -10,7 +10,7 @@ reviewRoutes.post('/:productId/approve', async (c) => {
     const now = new Date().toISOString()
     
     // Update product status to approved
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       UPDATE products SET status = 'approved', updated_at = ? WHERE id = ?
     `).bind(now, productId).run()
     
@@ -20,13 +20,13 @@ reviewRoutes.post('/:productId/approve', async (c) => {
     
     // Create approval review record
     const reviewId = crypto.randomUUID()
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       INSERT INTO reviews (id, product_id, reviewer_type, overall_score, approved, feedback, created_at)
       VALUES (?, ?, 'user', 10, 1, 'Approved for publishing', ?)
     `).bind(reviewId, productId, now).run()
     
     // Invalidate cache
-    await env.CONFIG.delete(`product:${productId}`)
+    await c.env.CONFIG.delete(`product:${productId}`)
     
     return c.json({ message: 'Product approved', product_id: productId })
   } catch (err) {
@@ -47,7 +47,7 @@ reviewRoutes.post('/:productId/reject', async (c) => {
     }
     
     // Update product status to rejected
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       UPDATE products SET status = 'rejected', updated_at = ? WHERE id = ?
     `).bind(now, productId).run()
     
@@ -57,13 +57,13 @@ reviewRoutes.post('/:productId/reject', async (c) => {
     
     // Create rejection review record
     const reviewId = crypto.randomUUID()
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       INSERT INTO reviews (id, product_id, reviewer_type, overall_score, approved, feedback, created_at)
       VALUES (?, ?, 'user', 0, 0, ?, ?)
     `).bind(reviewId, productId, feedback, now).run()
     
     // Invalidate cache
-    await env.CONFIG.delete(`product:${productId}`)
+    await c.env.CONFIG.delete(`product:${productId}`)
     
     return c.json({ message: 'Product rejected', product_id: productId, reason })
   } catch (err) {
@@ -84,7 +84,7 @@ reviewRoutes.post('/:productId/revise', async (c) => {
     }
     
     // Update product status to in_revision
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       UPDATE products SET status = 'in_revision', updated_at = ? WHERE id = ?
     `).bind(now, productId).run()
     
@@ -96,13 +96,13 @@ reviewRoutes.post('/:productId/revise', async (c) => {
     const reviewId = crypto.randomUUID()
     const revisionData = JSON.stringify({ sections })
     
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       INSERT INTO reviews (id, product_id, reviewer_type, overall_score, approved, feedback, created_at)
       VALUES (?, ?, 'revision', 5, 0, ?, ?)
     `).bind(reviewId, productId, revisionData, now).run()
     
     // Invalidate cache
-    await env.CONFIG.delete(`product:${productId}`)
+    await c.env.CONFIG.delete(`product:${productId}`)
     
     return c.json({ message: 'Revision requested', product_id: productId, sections })
   } catch (err) {
@@ -116,7 +116,7 @@ reviewRoutes.get('/:productId', async (c) => {
   try {
     const productId = c.req.param('productId')
     
-    const reviews = await env.DB.prepare(`
+    const reviews = await c.env.DB.prepare(`
       SELECT id, reviewer_type, overall_score, approved, feedback, created_at
       FROM reviews WHERE product_id = ? ORDER BY created_at DESC
     `).bind(productId).all()

@@ -29,7 +29,7 @@ export async function deleteProduct(
   productId: string,
   env: {
     DB: D1Database
-    KV: KVNamespace
+    CONFIG: KVNamespace
     ASSETS: R2Bucket
     CF_ACCOUNT_ID: string
     CF_API_TOKEN: string
@@ -84,7 +84,7 @@ export async function deleteProduct(
         : [Promise.resolve()]),
 
       // Invalidate KV cache
-      invalidateConfig(env.KV, `product:${productId}`).then(() => {
+      invalidateConfig(env.CONFIG, `product:${productId}`).then(() => {
         deleted.kvKeys.push(`product:${productId}`)
       }),
     ])
@@ -111,7 +111,7 @@ export async function deleteDomain(
   domainId: string,
   env: {
     DB: D1Database
-    KV: KVNamespace
+    CONFIG: KVNamespace
   }
 ): Promise<DeletionResult> {
   const errors: string[] = []
@@ -122,8 +122,8 @@ export async function deleteDomain(
       env.DB.prepare('DELETE FROM domains WHERE id = ?').bind(domainId).run(),
 
       // Invalidate KV cache
-      invalidateConfig(env.KV, `config:domains`),
-      invalidateConfig(env.KV, `config:categories:${domainId}`),
+      invalidateConfig(env.CONFIG, `config:domains`),
+      invalidateConfig(env.CONFIG, `config:categories:${domainId}`),
     ])
 
     return {
@@ -158,7 +158,7 @@ export async function deletePlatform(
   platformId: string,
   env: {
     DB: D1Database
-    KV: KVNamespace
+    CONFIG: KVNamespace
   }
 ): Promise<DeletionResult> {
   const errors: string[] = []
@@ -169,8 +169,8 @@ export async function deletePlatform(
       env.DB.prepare('DELETE FROM platforms WHERE id = ?').bind(platformId).run(),
 
       // Invalidate KV cache
-      invalidateConfig(env.KV, `config:platforms`),
-      invalidateConfig(env.KV, `prompts:platform:${platformId}`),
+      invalidateConfig(env.CONFIG, `config:platforms`),
+      invalidateConfig(env.CONFIG, `prompts:platform:${platformId}`),
     ])
 
     return {
@@ -205,7 +205,7 @@ export async function deleteSocialChannel(
   channelId: string,
   env: {
     DB: D1Database
-    KV: KVNamespace
+    CONFIG: KVNamespace
   }
 ): Promise<DeletionResult> {
   const errors: string[] = []
@@ -216,8 +216,8 @@ export async function deleteSocialChannel(
       env.DB.prepare('DELETE FROM social_channels WHERE id = ?').bind(channelId).run(),
 
       // Invalidate KV cache
-      invalidateConfig(env.KV, `config:social_channels`),
-      invalidateConfig(env.KV, `prompts:social:${channelId}`),
+      invalidateConfig(env.CONFIG, `config:social_channels`),
+      invalidateConfig(env.CONFIG, `prompts:social:${channelId}`),
     ])
 
     return {

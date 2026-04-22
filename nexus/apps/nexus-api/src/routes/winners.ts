@@ -9,7 +9,7 @@ winnerRoutes.get('/', async (c) => {
     const limit = parseInt(c.req.query('limit') || '50')
     const offset = parseInt(c.req.query('offset') || '0')
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       SELECT * FROM winner_patterns ORDER BY detection_count DESC LIMIT ? OFFSET ?
     `).bind(limit, offset).all()
     
@@ -27,7 +27,7 @@ winnerRoutes.get('/', async (c) => {
 winnerRoutes.get('/:id', async (c) => {
   try {
     const id = c.req.param('id')
-    const pattern = await env.DB.prepare('SELECT * FROM winner_patterns WHERE id = ?').bind(id).first()
+    const pattern = await c.env.DB.prepare('SELECT * FROM winner_patterns WHERE id = ?').bind(id).first()
     
     if (!pattern) {
       return c.json({ error: 'Winner pattern not found' }, 404)

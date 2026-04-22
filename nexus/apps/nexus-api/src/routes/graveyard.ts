@@ -9,7 +9,7 @@ graveyardRoutes.get('/', async (c) => {
     const limit = parseInt(c.req.query('limit') || '50')
     const offset = parseInt(c.req.query('offset') || '0')
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       SELECT p.*, d.name as domain_name, c.name as category_name
       FROM products p
       JOIN domains d ON p.domain_id = d.id
@@ -36,7 +36,7 @@ graveyardRoutes.post('/:productId/move', async (c) => {
     const { reason, resurface_at } = await c.req.json()
     const now = new Date().toISOString()
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       UPDATE products SET 
         status = 'archived',
         graveyard_at = ?,
@@ -50,7 +50,7 @@ graveyardRoutes.post('/:productId/move', async (c) => {
       return c.json({ error: 'Product not found' }, 404)
     }
     
-    await env.CONFIG.delete(`product:${productId}`)
+    await c.env.CONFIG.delete(`product:${productId}`)
     
     return c.json({ message: 'Product moved to graveyard' })
   } catch (err) {
@@ -65,7 +65,7 @@ graveyardRoutes.post('/:productId/restore', async (c) => {
     const productId = c.req.param('productId')
     const now = new Date().toISOString()
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       UPDATE products SET 
         status = 'draft',
         graveyard_at = NULL,
@@ -79,7 +79,7 @@ graveyardRoutes.post('/:productId/restore', async (c) => {
       return c.json({ error: 'Product not found in graveyard' }, 404)
     }
     
-    await env.CONFIG.delete(`product:${productId}`)
+    await c.env.CONFIG.delete(`product:${productId}`)
     
     return c.json({ message: 'Product restored from graveyard' })
   } catch (err) {
@@ -93,7 +93,7 @@ graveyardRoutes.get('/due', async (c) => {
   try {
     const now = new Date().toISOString()
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       SELECT p.*, d.name as domain_name, c.name as category_name
       FROM products p
       JOIN domains d ON p.domain_id = d.id

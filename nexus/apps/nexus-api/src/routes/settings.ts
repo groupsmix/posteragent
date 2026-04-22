@@ -6,7 +6,7 @@ export const settingsRoutes = new Hono<{ Bindings: Env }>()
 // GET /settings - Get all settings
 settingsRoutes.get('/', async (c) => {
   try {
-    const result = await env.DB.prepare('SELECT * FROM settings').all()
+    const result = await c.env.DB.prepare('SELECT * FROM settings').all()
     
     // Transform rows into key-value object
     const settings: Record<string, any> = {}
@@ -30,7 +30,7 @@ settingsRoutes.get('/:key', async (c) => {
   try {
     const key = c.req.param('key')
     
-    const setting = await env.DB.prepare(
+    const setting = await c.env.DB.prepare(
       'SELECT * FROM settings WHERE setting_key = ?'
     ).bind(key).first()
     
@@ -59,7 +59,7 @@ settingsRoutes.patch('/', async (c) => {
     for (const [key, value] of Object.entries(updates)) {
       const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value)
       
-      await env.DB.prepare(`
+      await c.env.DB.prepare(`
         INSERT INTO settings (setting_key, setting_value, updated_at)
         VALUES (?, ?, ?)
         ON CONFLICT(setting_key) DO UPDATE SET setting_value = ?, updated_at = ?
@@ -67,7 +67,7 @@ settingsRoutes.patch('/', async (c) => {
     }
     
     // Return updated settings
-    const result = await env.DB.prepare('SELECT * FROM settings').all()
+    const result = await c.env.DB.prepare('SELECT * FROM settings').all()
     const settings: Record<string, any> = {}
     for (const row of result.results as any[]) {
       try {
@@ -97,7 +97,7 @@ settingsRoutes.patch('/:key', async (c) => {
     
     const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value)
     
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       INSERT INTO settings (setting_key, setting_value, updated_at)
       VALUES (?, ?, ?)
       ON CONFLICT(setting_key) DO UPDATE SET setting_value = ?, updated_at = ?

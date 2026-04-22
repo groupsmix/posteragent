@@ -19,6 +19,7 @@ export interface AIRegistryEntry {
   isFree: boolean
   why: string
   apiModelName: string
+  costPer1MTokens?: number
 }
 
 export type AIProvider =
@@ -37,6 +38,8 @@ export type AIProvider =
   | 'serpapi'
   | 'suno'
   | 'ideogram'
+  | 'printful'
+  | 'printify'
   | 'local'
 
 // ============================================================

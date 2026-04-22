@@ -132,3 +132,68 @@ export type ProductFilters = {
   limit?: number
   offset?: number
 }
+
+// ============================================================
+// Review / CEO screen types
+// ============================================================
+
+// Simpler UI-focused section scores (7 criteria shown in the CEO review).
+// Note: the canonical `SectionScores` (used by the workflow engine) lives in
+// ./workflow.ts and has an extra `overall_readiness` field.
+export interface UISectionScores {
+  title: number
+  description: number
+  seo: number
+  price: number
+  platform_fit: number
+  human_quality: number
+  competitive_position: number
+}
+
+export interface UIReviewIssue {
+  section: keyof UISectionScores
+  problem: string
+  fix: string
+}
+
+export interface UIHealthCheckItem {
+  label: string
+  status: 'pass' | 'warn' | 'fail'
+  detail?: string
+}
+
+export interface LaunchBoostPack {
+  posts: { channel: string; when: string; content: string }[]
+}
+
+export interface ProductDetail extends Product {
+  domain_name?: string
+  category_name?: string
+  ai_score: number
+  section_scores: UISectionScores
+  issues: UIReviewIssue[]
+  title_variants: string[]
+  selected_title_index: number
+  description: string
+  tags: string[]
+  price: number
+  currency: string
+  revenue_estimate_detail?: { min: number; max: number; currency: string }
+  platform_variants: Array<PlatformVariant & {
+    platform_name?: string
+    tags: string[]
+  }>
+  social_variants: Array<Omit<SocialVariant, 'content'> & {
+    channel_name?: string
+    content: {
+      caption: string
+      hashtags: string[]
+      hook?: string
+      thread?: string[]
+    }
+  }>
+  assets: Asset[]
+  health_check: UIHealthCheckItem[]
+  competitor_gap?: { detected: boolean; summary: string }
+  launch_boost_pack?: LaunchBoostPack
+}

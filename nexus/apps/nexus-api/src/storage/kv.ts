@@ -87,7 +87,7 @@ export async function kvListKeys(kv: KVNamespace, prefix: string): Promise<strin
   do {
     const result = await kv.list({ prefix, cursor })
     keys.push(...result.keys.map((k) => k.name))
-    cursor = result.cursor
+    cursor = result.list_complete ? undefined : (result as { cursor?: string }).cursor
   } while (cursor)
 
   return keys

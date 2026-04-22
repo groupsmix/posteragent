@@ -18,7 +18,7 @@ promptRoutes.get('/', async (c) => {
     
     query += ' ORDER BY layer, name'
     
-    const result = await env.DB.prepare(query).bind(...bindings).all()
+    const result = await c.env.DB.prepare(query).bind(...bindings).all()
     return c.json(result.results)
   } catch (err) {
     console.error('Error listing prompts:', err)
@@ -30,7 +30,7 @@ promptRoutes.get('/', async (c) => {
 promptRoutes.get('/:id', async (c) => {
   try {
     const id = c.req.param('id')
-    const prompt = await env.DB.prepare('SELECT * FROM prompt_templates WHERE id = ?').bind(id).first()
+    const prompt = await c.env.DB.prepare('SELECT * FROM prompt_templates WHERE id = ?').bind(id).first()
     
     if (!prompt) {
       return c.json({ error: 'Prompt not found' }, 404)
@@ -55,7 +55,7 @@ promptRoutes.patch('/:id', async (c) => {
     
     const now = new Date().toISOString()
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       UPDATE prompt_templates SET prompt_text = ?, updated_at = ? WHERE id = ?
     `).bind(prompt_text, now, id).run()
     
@@ -64,13 +64,13 @@ promptRoutes.patch('/:id', async (c) => {
     }
     
     // Invalidate prompt cache
-    const prompt = await env.DB.prepare('SELECT layer, reference_id FROM prompt_templates WHERE id = ?').bind(id).first() as any
+    const prompt = await c.env.DB.prepare('SELECT layer, reference_id FROM prompt_templates WHERE id = ?').bind(id).first() as any
     if (prompt) {
       const cacheKey = `prompts:${prompt.layer}:${prompt.reference_id || prompt.id}`
-      await env.CONFIG.delete(cacheKey)
+      await c.env.CONFIG.delete(cacheKey)
     }
     
-    const updated = await env.DB.prepare('SELECT * FROM prompt_templates WHERE id = ?').bind(id).first()
+    const updated = await c.env.DB.prepare('SELECT * FROM prompt_templates WHERE id = ?').bind(id).first()
     return c.json(updated)
   } catch (err) {
     console.error('Error updating prompt:', err)
@@ -90,7 +90,7 @@ promptRoutes.post('/', async (c) => {
     const id = crypto.randomUUID()
     const now = new Date().toISOString()
     
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       INSERT INTO prompt_templates (id, name, layer, reference_id, prompt_text, 
                                    description, is_active, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -99,7 +99,7 @@ promptRoutes.post('/', async (c) => {
       data.prompt_text, data.description || '', data.is_active ?? 1, now, now
     ).run()
     
-    const prompt = await env.DB.prepare('SELECT * FROM prompt_templates WHERE id = ?').bind(id).first()
+    const prompt = await c.env.DB.prepare('SELECT * FROM prompt_templates WHERE id = ?').bind(id).first()
     return c.json(prompt, 201)
   } catch (err) {
     console.error('Error creating prompt:', err)

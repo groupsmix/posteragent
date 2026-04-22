@@ -6,16 +6,16 @@ export const platformRoutes = new Hono<{ Bindings: Env }>()
 // GET /platforms - List all platforms
 platformRoutes.get('/', async (c) => {
   try {
-    const cached = await env.CONFIG.get('config:platforms')
+    const cached = await c.env.CONFIG.get('config:platforms')
     if (cached) {
       return c.json(JSON.parse(cached))
     }
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       SELECT * FROM platforms WHERE is_active = 1 ORDER BY sort_order ASC
     `).all()
     
-    await env.CONFIG.put('config:platforms', JSON.stringify(result.results), { expirationTtl: 3600 })
+    await c.env.CONFIG.put('config:platforms', JSON.stringify(result.results), { expirationTtl: 3600 })
     
     return c.json(result.results)
   } catch (err) {
@@ -36,7 +36,7 @@ platformRoutes.post('/', async (c) => {
     const id = crypto.randomUUID()
     const now = new Date().toISOString()
     
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       INSERT INTO platforms (id, name, slug, url, title_max_chars, description_max, 
                            tag_count, tag_max_chars, audience, tone, seo_style,
                            description_style, cta_style, forbidden_words, rules_json,
@@ -53,9 +53,9 @@ platformRoutes.post('/', async (c) => {
       data.is_active ?? 1, data.sort_order ?? 0, now, now
     ).run()
     
-    await env.CONFIG.delete('config:platforms')
+    await c.env.CONFIG.delete('config:platforms')
     
-    const platform = await env.DB.prepare('SELECT * FROM platforms WHERE id = ?').bind(id).first()
+    const platform = await c.env.DB.prepare('SELECT * FROM platforms WHERE id = ?').bind(id).first()
     return c.json(platform, 201)
   } catch (err: any) {
     if (err.message?.includes('UNIQUE constraint')) {
@@ -70,7 +70,7 @@ platformRoutes.post('/', async (c) => {
 platformRoutes.get('/:id', async (c) => {
   try {
     const id = c.req.param('id')
-    const platform = await env.DB.prepare('SELECT * FROM platforms WHERE id = ?').bind(id).first()
+    const platform = await c.env.DB.prepare('SELECT * FROM platforms WHERE id = ?').bind(id).first()
     
     if (!platform) {
       return c.json({ error: 'Platform not found' }, 404)
@@ -107,7 +107,7 @@ platformRoutes.patch('/:id', async (c) => {
     
     values.push(id)
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       UPDATE platforms SET ${setClause.join(', ')} WHERE id = ?
     `).bind(...values).run()
     
@@ -115,9 +115,9 @@ platformRoutes.patch('/:id', async (c) => {
       return c.json({ error: 'Platform not found' }, 404)
     }
     
-    await env.CONFIG.delete('config:platforms')
+    await c.env.CONFIG.delete('config:platforms')
     
-    const platform = await env.DB.prepare('SELECT * FROM platforms WHERE id = ?').bind(id).first()
+    const platform = await c.env.DB.prepare('SELECT * FROM platforms WHERE id = ?').bind(id).first()
     return c.json(platform)
   } catch (err) {
     console.error('Error updating platform:', err)
@@ -130,13 +130,13 @@ platformRoutes.delete('/:id', async (c) => {
   try {
     const id = c.req.param('id')
     
-    const result = await env.DB.prepare('DELETE FROM platforms WHERE id = ?').bind(id).run()
+    const result = await c.env.DB.prepare('DELETE FROM platforms WHERE id = ?').bind(id).run()
     
     if (result.meta.changes === 0) {
       return c.json({ error: 'Platform not found' }, 404)
     }
     
-    await env.CONFIG.delete('config:platforms')
+    await c.env.CONFIG.delete('config:platforms')
     
     return c.json({ message: 'Platform deleted' })
   } catch (err) {

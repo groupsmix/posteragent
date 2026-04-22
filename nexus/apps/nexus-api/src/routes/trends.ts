@@ -16,7 +16,7 @@ trendRoutes.get('/', async (c) => {
     }
     query += ' ORDER BY detected_at DESC LIMIT ? OFFSET ?'
     
-    const result = await env.DB.prepare(query).bind(limit, offset).all()
+    const result = await c.env.DB.prepare(query).bind(limit, offset).all()
     
     return c.json({
       trends: result.results,
@@ -33,7 +33,7 @@ trendRoutes.post('/:id/dismiss', async (c) => {
   try {
     const id = c.req.param('id')
     
-    const result = await env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       UPDATE trend_alerts SET dismissed = 1, dismissed_at = ? WHERE id = ?
     `).bind(new Date().toISOString(), id).run()
     
@@ -54,7 +54,7 @@ trendRoutes.post('/:id/start', async (c) => {
     const trendId = c.req.param('id')
     
     // Get trend info
-    const trend = await env.DB.prepare('SELECT * FROM trend_alerts WHERE id = ?').bind(trendId).first() as any
+    const trend = await c.env.DB.prepare('SELECT * FROM trend_alerts WHERE id = ?').bind(trendId).first() as any
     
     if (!trend) {
       return c.json({ error: 'Trend not found' }, 404)
@@ -65,8 +65,8 @@ trendRoutes.post('/:id/start', async (c) => {
     const now = new Date().toISOString()
     
     // Get default domain and category (first active ones)
-    const domain = await env.DB.prepare('SELECT id FROM domains WHERE is_active = 1 LIMIT 1').first() as any
-    const category = await env.DB.prepare('SELECT id FROM categories WHERE is_active = 1 LIMIT 1').first() as any
+    const domain = await c.env.DB.prepare('SELECT id FROM domains WHERE is_active = 1 LIMIT 1').first() as any
+    const category = await c.env.DB.prepare('SELECT id FROM categories WHERE is_active = 1 LIMIT 1').first() as any
     
     const userInput = {
       niche: trend.keyword,
@@ -75,7 +75,7 @@ trendRoutes.post('/:id/start', async (c) => {
       trend_id: trendId,
     }
     
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       INSERT INTO products (id, domain_id, category_id, user_input, status, created_at, updated_at)
       VALUES (?, ?, ?, ?, 'draft', ?, ?)
     `).bind(
@@ -89,7 +89,7 @@ trendRoutes.post('/:id/start', async (c) => {
     
     // Create workflow run
     const runId = crypto.randomUUID()
-    await env.DB.prepare(`
+    await c.env.DB.prepare(`
       INSERT INTO workflow_runs (id, product_id, status, created_at)
       VALUES (?, ?, 'queued', ?)
     `).bind(runId, productId, now).run()

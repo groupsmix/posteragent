@@ -33,7 +33,7 @@ historyRoutes.get('/', async (c) => {
     query += ' ORDER BY wr.created_at DESC LIMIT ? OFFSET ?'
     bindings.push(limit, offset)
     
-    const result = await env.DB.prepare(query).bind(...bindings).all()
+    const result = await c.env.DB.prepare(query).bind(...bindings).all()
     
     return c.json({
       runs: result.results,
@@ -50,7 +50,7 @@ historyRoutes.get('/:id', async (c) => {
   try {
     const runId = c.req.param('id')
     
-    const run = await env.DB.prepare(`
+    const run = await c.env.DB.prepare(`
       SELECT wr.*, p.name as product_name, p.user_input
       FROM workflow_runs wr
       JOIN products p ON wr.product_id = p.id
@@ -61,7 +61,7 @@ historyRoutes.get('/:id', async (c) => {
       return c.json({ error: 'Workflow run not found' }, 404)
     }
     
-    const steps = await env.DB.prepare(`
+    const steps = await c.env.DB.prepare(`
       SELECT * FROM workflow_steps WHERE run_id = ? ORDER BY step_order
     `).bind(runId).all()
     
@@ -81,7 +81,7 @@ historyRoutes.get('/:id/step/:stepId', async (c) => {
     const runId = c.req.param('id')
     const stepId = c.req.param('stepId')
     
-    const step = await env.DB.prepare(`
+    const step = await c.env.DB.prepare(`
       SELECT * FROM workflow_steps WHERE id = ? AND run_id = ?
     `).bind(stepId, runId).first()
     
