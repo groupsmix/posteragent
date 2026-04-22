@@ -1,7 +1,0 @@
-var o={},_=(p,x,u)=>(o.__chunk_9467=(N,c,r)=>{"use strict";r.d(c,{Z:()=>d});let d=(0,r(7673).Z)("Loader2",[["path",{d:"M21 12a9 9 0 1 1-6.219-8.56",key:"13zald"}]])},o.__chunk_401=(N,c,r)=>{"use strict";r.d(c,{Ol:()=>f,Zb:()=>n,aY:()=>m,ll:()=>i});var d=r(6657),l=r(4347),t=r(3150);let n=l.forwardRef(({className:e,...a},s)=>(0,d.jsx)("div",{ref:s,className:(0,t.cn)("rounded-xl border bg-card text-card-foreground shadow",e),...a}));n.displayName="Card";let f=l.forwardRef(({className:e,...a},s)=>(0,d.jsx)("div",{ref:s,className:(0,t.cn)("flex flex-col space-y-1.5 p-6",e),...a}));f.displayName="CardHeader";let i=l.forwardRef(({className:e,...a},s)=>(0,d.jsx)("div",{ref:s,className:(0,t.cn)("font-semibold leading-none tracking-tight",e),...a}));i.displayName="CardTitle",l.forwardRef(({className:e,...a},s)=>(0,d.jsx)("div",{ref:s,className:(0,t.cn)("text-sm text-muted-foreground",e),...a})).displayName="CardDescription";let m=l.forwardRef(({className:e,...a},s)=>(0,d.jsx)("div",{ref:s,className:(0,t.cn)("p-6 pt-0",e),...a}));m.displayName="CardContent",l.forwardRef(({className:e,...a},s)=>(0,d.jsx)("div",{ref:s,className:(0,t.cn)("flex items-center p-6 pt-0",e),...a})).displayName="CardFooter"},o);export{_ as __getNamedExports};
-/**
-* @license lucide-react v0.312.0 - ISC
-*
-* This source code is licensed under the ISC license.
-* See the LICENSE file in the root directory of this source tree.
-*/
