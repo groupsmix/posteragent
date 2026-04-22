@@ -105,11 +105,11 @@ export default {
 // ------------------------------------------------------------
 async function runTrendRadar(env: Env): Promise<void> {
   try {
-    const settings = await env.DB
-      .prepare('SELECT trend_radar_enabled FROM settings LIMIT 1')
-      .first<{ trend_radar_enabled: number | null }>()
+    const enabled = await env.DB
+      .prepare("SELECT value FROM settings WHERE key = 'trend_radar_enabled' LIMIT 1")
+      .first<{ value: string }>()
       .catch(() => null)
-    if (settings && settings.trend_radar_enabled === 0) {
+    if (enabled?.value === 'false') {
       console.log('[cron] trend radar disabled in settings, skipping')
       return
     }

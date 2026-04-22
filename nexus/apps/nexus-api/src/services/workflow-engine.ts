@@ -277,12 +277,13 @@ export class ProductWorkflow {
         `UPDATE workflow_runs SET status='completed', completed_at=?, current_step=NULL WHERE id=?`
       ).bind(now(), runId).run()
 
-      // Gate on CEO review toggle
-      const settings = await this.env.DB.prepare(
-        `SELECT ceo_review_required FROM settings LIMIT 1`
-      ).first<{ ceo_review_required: number | null }>().catch(() => null)
-
-      const nextStatus = settings?.ceo_review_required === 0 ? 'approved' : 'pending_review'
+      // Gate on CEO review toggle (stored as key/value)
+      const ceoSetting = await this.env.DB
+        .prepare(`SELECT value FROM settings WHERE key = 'ceo_review_required' LIMIT 1`)
+        .first<{ value: string }>()
+        .catch(() => null)
+      const ceoRequired = ceoSetting?.value !== 'false'
+      const nextStatus = ceoRequired ? 'pending_review' : 'approved'
 
       await this.env.DB.prepare(
         `UPDATE products SET status=?, ai_score=?, updated_at=? WHERE id=?`
@@ -333,10 +334,29 @@ export class ProductWorkflow {
       ctx.data.seo?.meta_title ||
       null
 
+    const description: string = ctx.data.content || ctx.data.seo?.meta_description || ''
+    const tagsCsv = Array.isArray(ctx.data.tags) ? ctx.data.tags.join(',') : null
+    const price = typeof ctx.data.revenue?.avg === 'number'
+      ? ctx.data.revenue.avg
+      : (typeof ctx.data.market?.price_range?.avg === 'number' ? ctx.data.market.price_range.avg : null)
+    const currency = ctx.data.revenue?.currency || 'USD'
+
     await this.env.DB.prepare(
-      `UPDATE products SET name = COALESCE(?, name), revenue_estimate = ?, updated_at = ? WHERE id = ?`
+      `UPDATE products
+         SET name = COALESCE(?, name),
+             description = ?,
+             tags = ?,
+             price = ?,
+             currency = ?,
+             revenue_estimate = ?,
+             updated_at = ?
+       WHERE id = ?`
     ).bind(
       title,
+      description || null,
+      tagsCsv,
+      price,
+      currency,
       ctx.data.revenue ? JSON.stringify(ctx.data.revenue) : null,
       now,
       productId,
