@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
 import type { StartWorkflowInput, WorkflowStatus } from '../types'
+import { ProductWorkflow } from '../services/workflow-engine'
 
 export const workflowRoutes = new Hono<{ Bindings: Env }>()
 
@@ -47,17 +48,18 @@ workflowRoutes.post('/start', async (c) => {
       VALUES (?, ?, 'queued', ?)
     `).bind(runId, productId, now).run()
     
-    // Start the workflow via Cloudflare Workflows
-    // For now, we'll mark it as running and let the worker process it
-    await c.env.DB.prepare(`
-      UPDATE workflow_runs SET status = 'running', started_at = ? WHERE id = ?
-    `).bind(now, runId).run()
-    
-    // Update product status
+    // Mark product as running
     await c.env.DB.prepare(`
       UPDATE products SET status = 'running', updated_at = ? WHERE id = ?
     `).bind(now, productId).run()
-    
+
+    // Kick off the 15-step pipeline asynchronously. waitUntil keeps the
+    // worker alive after we return 201 so the run finishes in background.
+    const engine = new ProductWorkflow(c.env)
+    c.executionCtx.waitUntil(
+      engine.run(runId, productId as string, body.domain_slug, body.category_slug, body.user_input ?? {})
+    )
+
     return c.json({
       workflow_id: runId,
       product_id: productId,
