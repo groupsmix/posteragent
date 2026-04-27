@@ -8,36 +8,13 @@ node_compat = true
 # ================================
 [[kv_namespaces]]
 binding = "CONFIG"
-id = "YOUR_KV_ID"
-preview_id = "YOUR_KV_PREVIEW_ID"
+id = "df275bcec9b345589e0d938c980ee3bb"
+preview_id = "14d869767b0e4b6c857247e919c7b83a"
 
 # ================================
-# SECRETS STORE (for API keys)
+# SECRETS STORE (optional — worker falls back to plain secrets)
 # ================================
-[secrets_store]
-binding = "SECRETS"
-store_id = "YOUR_SECRETS_STORE_ID"
-
-# ================================
-# BUILD CONFIGURATION
-# ================================
-[build]
-command = "pnpm build"
-cwd = "../.."
-
-[build.upload]
-format = "service-worker"
-main = "src/index.ts"
-
-# ================================
-# TYPESCRIPT CONFIG
-# ================================
-[typescript]
-strict = true
-
-# ================================
-# RATE LIMITS (per-worker)
-# ================================
-# Unlimited on paid plan, but set reasonable limits for free tier compatibility
-[limits]
-cpu_ms = 50  # 50ms CPU time per request
+# Uncomment and set store_id after creating a Cloudflare Secrets Store.
+# [secrets_store]
+# binding = "SECRETS"
+# store_id = "YOUR_SECRETS_STORE_ID"
