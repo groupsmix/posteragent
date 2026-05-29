@@ -5,9 +5,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Package, ShieldCheck,
-  Settings as SettingsIcon, Globe2, Megaphone, FileCode, History,
+  Settings as SettingsIcon, Globe2, Megaphone, History,
   Bot, KeyRound, CalendarClock, Rocket, LayoutDashboard, ChevronDown, DollarSign,
-  Menu, X, Radar, Cpu, LayoutGrid, Workflow, Brain, Skull, Sunrise, Shirt,
+  Menu, X, Radar, LayoutGrid, Workflow, Brain, Sunrise, Shirt,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -18,39 +18,34 @@ const digest: Item = { to: '/digest', label: 'Digest', icon: Sunrise }
 
 const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
   {
-    title: 'Main',
+    title: 'Work',
     items: [
       { to: '/products', label: 'Products', icon: Package },
-      { to: '/ceo', label: 'CEO', icon: Bot },
+      { to: '/ceo', label: 'AI Assistant', icon: Bot },
       { to: '/review', label: 'Review', icon: ShieldCheck },
+      { to: '/pod', label: 'Print on Demand', icon: Shirt },
     ],
   },
   {
-    title: 'Revenue',
+    title: 'Grow',
     items: [
       { to: '/revenue', label: 'Revenue', icon: DollarSign },
-      { to: '/platforms', label: 'Platforms', icon: Globe2 },
       { to: '/learning', label: 'Learning Loop', icon: Brain },
-      { to: '/intelligence', label: 'Intelligence', icon: Radar },
       { to: '/marketing', label: 'Marketing', icon: Megaphone },
       { to: '/autopilot', label: 'Autopilot', icon: Rocket },
-      { to: '/pod', label: 'Print on Demand', icon: Shirt },
-      { to: '/graveyard', label: 'Graveyard', icon: Skull },
     ],
   },
   {
     title: 'System',
     collapsible: true,
     items: [
+      { to: '/platforms', label: 'Platforms', icon: Globe2 },
+      { to: '/intelligence', label: 'Intelligence', icon: Radar },
       { to: '/schedules', label: 'Schedules', icon: CalendarClock },
       { to: '/history', label: 'History', icon: History },
       { to: '/settings', label: 'Settings', icon: SettingsIcon },
       { to: '/settings/keys', label: 'API Keys', icon: KeyRound },
       { to: '/manager/domains', label: 'Domains', icon: LayoutGrid },
-      { to: '/manager/platforms', label: 'Platforms', icon: Globe2 },
-      { to: '/manager/social', label: 'Social', icon: Megaphone },
-      { to: '/manager/prompts', label: 'Prompts', icon: FileCode },
-      { to: '/manager/ai', label: 'AI Models', icon: Cpu },
     ],
   },
 ]
