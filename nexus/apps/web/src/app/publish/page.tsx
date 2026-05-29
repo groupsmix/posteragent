@@ -35,7 +35,7 @@ export default function PublishPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><Send className="h-6 w-6" /> Publish center</span>}
+        title={<span className="flex items-center gap-2"><Send className="h-5 w-5" /> Publish center</span>}
         subtitle="Approved products ready to go live on their platforms."
       />
       <PageBody>
@@ -59,7 +59,7 @@ export default function PublishPage() {
                 <button
                   onClick={() => publish(item.id)}
                   disabled={busy[item.id]}
-                  className="inline-flex items-center gap-1 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-glow disabled:opacity-60"
+                  className="inline-flex items-center gap-1 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold disabled:opacity-60"
                 >
                   <Send className="h-4 w-4" /> {busy[item.id] ? 'Publishing…' : 'Publish'}
                 </button>

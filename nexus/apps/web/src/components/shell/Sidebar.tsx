@@ -4,10 +4,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutGrid, Workflow, ShieldCheck, Package, Skull, Send, Radar, Brain,
-  Settings as SettingsIcon, Cpu, Globe2, Megaphone, FileCode, History,
-  Bot, KeyRound, Users, CalendarClock, Rocket, LayoutDashboard, Plus, ChevronDown, DollarSign,
-  Menu, X, Sunrise,
+  Package, ShieldCheck,
+  Settings as SettingsIcon, Globe2, Megaphone, FileCode, History,
+  Bot, KeyRound, CalendarClock, Rocket, LayoutDashboard, ChevronDown, DollarSign,
+  Menu, X, Radar, Cpu, LayoutGrid, Workflow, Brain, Skull, Sunrise,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -18,54 +18,50 @@ const digest: Item = { to: '/digest', label: 'Digest', icon: Sunrise }
 
 const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
   {
-    title: 'Operate',
+    title: 'Main',
     items: [
-      { to: '/create', label: 'Build a product', icon: Plus },
-      { to: '/ceo', label: 'CEO', icon: Bot },
-      { to: '/team', label: 'AI Team', icon: Users },
-      { to: '/autopilot', label: 'Autopilot', icon: Rocket },
-      { to: '/marketing', label: 'Marketing', icon: Megaphone },
       { to: '/products', label: 'Products', icon: Package },
-      { to: '/review', label: 'Review queue', icon: ShieldCheck },
-      { to: '/publish', label: 'Publish center', icon: Send },
-      { to: '/schedules', label: 'Scheduler', icon: CalendarClock },
+      { to: '/ceo', label: 'CEO', icon: Bot },
+      { to: '/review', label: 'Review', icon: ShieldCheck },
     ],
   },
   {
-    title: 'Intelligence',
+    title: 'Revenue',
     items: [
       { to: '/revenue', label: 'Revenue', icon: DollarSign },
       { to: '/learning', label: 'Learning Loop', icon: Brain },
-      { to: '/intelligence', label: 'Trends & winners', icon: Radar },
+      { to: '/intelligence', label: 'Intelligence', icon: Radar },
+      { to: '/marketing', label: 'Marketing', icon: Megaphone },
+      { to: '/autopilot', label: 'Autopilot', icon: Rocket },
       { to: '/graveyard', label: 'Graveyard', icon: Skull },
-      { to: '/history', label: 'Run history', icon: History },
     ],
   },
   {
-    title: 'Manage',
+    title: 'System',
     collapsible: true,
     items: [
-      { to: '/browser', label: 'Browser automation', icon: Globe2 },
-      { to: '/manager/domains', label: 'Domains & categories', icon: LayoutGrid },
-      { to: '/manager/platforms', label: 'Platforms', icon: Globe2 },
-      { to: '/manager/social', label: 'Social channels', icon: Megaphone },
-      { to: '/manager/prompts', label: 'Prompts', icon: FileCode },
-      { to: '/manager/ai', label: 'AI models', icon: Cpu },
-      { to: '/settings/keys', label: 'API keys', icon: KeyRound },
+      { to: '/schedules', label: 'Schedules', icon: CalendarClock },
+      { to: '/history', label: 'History', icon: History },
       { to: '/settings', label: 'Settings', icon: SettingsIcon },
+      { to: '/settings/keys', label: 'API Keys', icon: KeyRound },
+      { to: '/manager/domains', label: 'Domains', icon: LayoutGrid },
+      { to: '/manager/platforms', label: 'Platforms', icon: Globe2 },
+      { to: '/manager/social', label: 'Social', icon: Megaphone },
+      { to: '/manager/prompts', label: 'Prompts', icon: FileCode },
+      { to: '/manager/ai', label: 'AI Models', icon: Cpu },
     ],
   },
 ]
 
 function Brand() {
   return (
-    <Link href="/" className="flex items-center gap-2">
-      <div className="h-8 w-8 rounded-lg bg-gradient-primary shadow-glow flex items-center justify-center">
-        <Workflow className="h-4 w-4 text-primary-foreground" />
+    <Link href="/" className="flex items-center gap-2.5">
+      <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center">
+        <Workflow className="h-4 w-4 text-primary" />
       </div>
       <div>
-        <div className="font-bold tracking-tight text-base">NEXUS</div>
-        <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Personal AI Engine</div>
+        <div className="font-semibold tracking-tight text-sm text-foreground">NEXUS</div>
+        <div className="text-[10px] text-muted-foreground leading-none">AI Engine</div>
       </div>
     </Link>
   )
@@ -73,26 +69,30 @@ function Brand() {
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname() || '/'
-  const isActive = (to: string) => pathname === to || (to !== '/' && pathname.startsWith(to))
-  const [manageOpen, setManageOpen] = useState(
+  const isActive = (to: string) =>
+    to === '/' ? pathname === '/' :
+    to === '/settings' ? pathname === '/settings' :
+    pathname === to || (to !== '/' && to !== '/settings' && pathname.startsWith(to))
+  const [systemOpen, setSystemOpen] = useState(
     sections.find((s) => s.collapsible)?.items.some((i) => isActive(i.to)) ?? false
   )
 
   const renderItem = (item: Item) => {
     const Icon = item.icon
+    const active = isActive(item.to)
     return (
       <li key={item.to}>
         <Link
           href={item.to}
           onClick={onNavigate}
           className={cn(
-            'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors',
-            isActive(item.to)
-              ? 'bg-sidebar-accent text-foreground font-medium'
-              : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60'
+            'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-all duration-150',
+            active
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
           )}
         >
-          <Icon className="h-4 w-4 shrink-0" />
+          <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-primary' : '')} />
           {item.label}
         </Link>
       </li>
@@ -100,22 +100,24 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-6">
+    <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
       <ul className="space-y-0.5">{renderItem(home)}{renderItem(digest)}</ul>
       {sections.map((sec) => (
         <div key={sec.title}>
           {sec.collapsible ? (
             <button
-              onClick={() => setManageOpen((o) => !o)}
-              className="w-full flex items-center justify-between px-3 mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
+              onClick={() => setSystemOpen((o) => !o)}
+              className="w-full flex items-center justify-between px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 hover:text-muted-foreground transition-colors"
             >
               {sec.title}
-              <ChevronDown className={cn('h-3 w-3 transition-transform', manageOpen ? '' : '-rotate-90')} />
+              <ChevronDown className={cn('h-3 w-3 transition-transform duration-200', systemOpen ? '' : '-rotate-90')} />
             </button>
           ) : (
-            <div className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{sec.title}</div>
+            <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+              {sec.title}
+            </div>
           )}
-          {(!sec.collapsible || manageOpen) && (
+          {(!sec.collapsible || systemOpen) && (
             <ul className="space-y-0.5">{sec.items.map(renderItem)}</ul>
           )}
         </div>
@@ -130,11 +132,11 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile top bar */}
-      <header className="md:hidden fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-3 border-b border-sidebar-border bg-sidebar px-4 text-sidebar-foreground">
+      <header className="md:hidden fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-sidebar px-4 text-sidebar-foreground">
         <button
           onClick={() => setOpen(true)}
           aria-label="Open menu"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-sidebar-border text-muted-foreground hover:text-foreground"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -144,9 +146,9 @@ export function Sidebar() {
       {/* Mobile drawer */}
       {open && (
         <div className="md:hidden fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
-          <aside className="absolute left-0 top-0 flex h-full w-72 max-w-[80%] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-xl">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-sidebar-border">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
+          <aside className="absolute left-0 top-0 flex h-full w-72 max-w-[80%] flex-col bg-sidebar text-sidebar-foreground shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <Brand />
               <button
                 onClick={() => setOpen(false)}
@@ -157,21 +159,21 @@ export function Sidebar() {
               </button>
             </div>
             <NavList onNavigate={() => setOpen(false)} />
-            <div className="px-4 py-3 border-t border-sidebar-border text-[11px] text-muted-foreground">
-              v4.0 · CF $5 plan
+            <div className="px-4 py-3 border-t border-border text-[11px] text-muted-foreground/60">
+              NEXUS v4.0
             </div>
           </aside>
         </div>
       )}
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-60 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-        <div className="px-5 py-5 border-b border-sidebar-border">
+      <aside className="hidden md:flex w-56 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground">
+        <div className="px-5 py-5 border-b border-border">
           <Brand />
         </div>
         <NavList />
-        <div className="px-4 py-3 border-t border-sidebar-border text-[11px] text-muted-foreground">
-          v4.0 · CF $5 plan
+        <div className="px-4 py-3 border-t border-border text-[11px] text-muted-foreground/60">
+          NEXUS v4.0
         </div>
       </aside>
     </>

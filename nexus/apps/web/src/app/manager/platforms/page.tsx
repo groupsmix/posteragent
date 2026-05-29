@@ -40,10 +40,10 @@ export default function ManagerPlatformsPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><Globe2 className="h-6 w-6" /> Platforms</span>}
+        title={<span className="flex items-center gap-2"><Globe2 className="h-5 w-5" /> Platforms</span>}
         subtitle="Marketplaces where the AI will list your products."
         actions={
-          <button onClick={add} className="inline-flex items-center gap-1 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-glow">
+          <button onClick={add} className="inline-flex items-center gap-1 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-glow">
             <Plus className="h-4 w-4" /> New platform
           </button>
         }

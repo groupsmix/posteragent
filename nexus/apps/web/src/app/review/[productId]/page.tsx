@@ -170,7 +170,7 @@ export default function ReviewPage() {
                     href={assetUrl(p.deliverable_url) ?? ''}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-md bg-gradient-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow"
+                    className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
                   >
                     <ExternalLink className="h-3.5 w-3.5" /> View PDF
                   </a>
@@ -178,7 +178,7 @@ export default function ReviewPage() {
                   <button
                     onClick={() => genDeliverable()}
                     disabled={genning}
-                    className="inline-flex items-center gap-1 rounded-md bg-gradient-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
                   >
                     <FileText className="h-3.5 w-3.5" /> {genning ? 'Generating…' : 'Generate deliverable'}
                   </button>
@@ -548,7 +548,7 @@ export default function ReviewPage() {
                 </button>
                 <button
                   onClick={approve}
-                  className="inline-flex items-center gap-1 rounded-lg bg-gradient-primary text-primary-foreground px-5 py-2 text-sm font-semibold shadow-glow"
+                  className="inline-flex items-center gap-1 rounded-lg bg-primary text-primary-foreground px-5 py-2 text-sm font-semibold "
                 >
                   <ThumbsUp className="h-4 w-4" /> Approve
                 </button>

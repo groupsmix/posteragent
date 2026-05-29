@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ShieldCheck } from 'lucide-react'
+import { ShieldCheck, Inbox } from 'lucide-react'
 import { api } from '@/lib/api'
 import type { Product } from '@nexus/types'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 
 export default function ReviewQueuePage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -21,36 +23,50 @@ export default function ReviewQueuePage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><ShieldCheck className="h-6 w-6" /> Review queue</span>}
+        title={<span className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" /> Review Queue</span>}
         subtitle="Products awaiting CEO approval."
+        actions={
+          products.length > 0 ? (
+            <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary">
+              {products.length} pending
+            </span>
+          ) : undefined
+        }
       />
       <PageBody>
         {loading ? (
-          <div className="text-sm text-muted-foreground">Loading…</div>
-        ) : products.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
-            Queue is clear. All workflows have been reviewed.
+          <div className="flex justify-center py-16">
+            <LoadingSpinner />
           </div>
+        ) : products.length === 0 ? (
+          <EmptyState
+            icon={<Inbox className="h-5 w-5" />}
+            title="Queue is clear"
+            description="All workflows have been reviewed. Check back after your next build."
+          />
         ) : (
-          <ul className="space-y-3">
+          <div className="space-y-3 max-w-3xl">
             {products.map((p) => (
-              <li key={p.id} className="rounded-xl border border-border bg-card p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div key={p.id} className="rounded-xl border border-border bg-card p-4 flex items-center justify-between gap-4 hover:border-primary/20 transition-colors">
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">{p.name || 'Untitled'}</div>
-                  <div className="text-xs text-muted-foreground truncate">{p.niche ?? '—'}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 truncate">{p.niche ?? '—'}</div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <div className="flex items-center gap-3 shrink-0">
+                  {typeof p.ai_score === 'number' && (
+                    <span className="text-xs font-mono text-muted-foreground">{p.ai_score.toFixed(1)}/10</span>
+                  )}
                   <StatusBadge status={p.status} />
                   <Link
                     href={`/review/${p.id}`}
-                    className="rounded-md bg-gradient-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold shadow-glow"
+                    className="rounded-lg bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
                   >
-                    Review →
+                    Review
                   </Link>
                 </div>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </PageBody>
     </>

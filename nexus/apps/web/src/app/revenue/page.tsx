@@ -17,7 +17,7 @@ export default function RevenuePage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><DollarSign className="h-6 w-6" /> Revenue</span>}
+        title={<span className="flex items-center gap-2"><DollarSign className="h-5 w-5" /> Revenue</span>}
         subtitle="Real sales pulled from Gumroad — not estimates."
       />
       <PageBody className="space-y-6">
@@ -28,21 +28,21 @@ export default function RevenuePage() {
         )}
 
         {!loading && data && !data.configured && (
-          <div className="rounded-xl border border-border bg-gradient-card p-6">
-            <div className="flex items-center gap-2 text-sm font-semibold"><Plug className="h-4 w-4" /> Connect Gumroad</div>
+          <div className="rounded-xl border border-border bg-card p-6">
+            <div className="flex items-center gap-2 text-sm font-medium"><Plug className="h-4 w-4" /> Connect Gumroad</div>
             <p className="mt-2 text-sm text-muted-foreground">
               {data.message || 'Add a Gumroad access token to track real sales.'}
             </p>
-            <Link href="/settings/keys" className="mt-4 inline-flex items-center gap-2 rounded-md bg-gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+            <Link href="/settings/keys" className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
               Add Gumroad token
             </Link>
           </div>
         )}
 
         {!loading && data?.configured && data.error && (
-          <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4">
-            <div className="text-sm font-semibold text-destructive">Couldn’t reach Gumroad</div>
-            <div className="mt-1 text-xs text-muted-foreground">{data.error}</div>
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+            <p className="text-sm font-medium text-destructive">Couldn&apos;t reach Gumroad</p>
+            <p className="mt-1 text-xs text-muted-foreground">{data.error}</p>
           </div>
         )}
 
@@ -58,7 +58,7 @@ export default function RevenuePage() {
             </div>
 
             <div className="rounded-xl border border-border bg-card">
-              <div className="border-b border-border px-5 py-3 text-sm font-semibold">Products ({data.product_count ?? 0})</div>
+              <div className="border-b border-border px-5 py-3 text-sm font-medium">Products ({data.product_count ?? 0})</div>
               {(!data.products || data.products.length === 0) ? (
                 <div className="px-5 py-8 text-center text-sm text-muted-foreground">No products listed on Gumroad yet.</div>
               ) : (
@@ -97,9 +97,9 @@ export default function RevenuePage() {
 
 function Stat({ icon, label, value, small }: { icon: React.ReactNode; label: string; value: string; small?: boolean }) {
   return (
-    <div className="rounded-xl border border-border bg-gradient-card p-5">
+    <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">{icon} {label}</div>
-      <div className={`mt-2 font-bold ${small ? 'text-base truncate' : 'text-2xl'}`}>{value}</div>
+      <div className={`mt-2 font-semibold ${small ? 'text-base truncate' : 'text-2xl'}`}>{value}</div>
     </div>
   )
 }

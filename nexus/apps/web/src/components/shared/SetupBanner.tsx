@@ -53,7 +53,7 @@ export function SetupBanner() {
   if (!steps || steps.every((s) => s.done)) return null
 
   return (
-    <div className="rounded-2xl border border-primary/30 bg-gradient-card p-5 shadow-card">
+    <div className="rounded-xl border border-primary/30 bg-card p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold">Turn on real income</h2>
         <span className="text-xs text-muted-foreground">
@@ -71,7 +71,7 @@ export function SetupBanner() {
               s.done ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-card'
             }`}
           >
-            <div className="flex items-center gap-2 font-semibold text-sm">
+            <div className="flex items-center gap-2 font-medium text-sm">
               <span
                 className={`inline-flex h-7 w-7 items-center justify-center rounded-lg ${
                   s.done ? 'bg-emerald-500/15 text-emerald-500' : 'bg-primary/10 text-primary'

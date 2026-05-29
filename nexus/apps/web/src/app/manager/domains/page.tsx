@@ -57,12 +57,12 @@ export default function ManagerDomainsPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><LayoutGrid className="h-6 w-6" /> Domains & categories</span>}
+        title={<span className="flex items-center gap-2"><LayoutGrid className="h-5 w-5" /> Domains & categories</span>}
         subtitle="Your product taxonomy. Used by the AI to route workflows."
         actions={
           <button
             onClick={addDomain}
-            className="inline-flex items-center gap-1 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-glow"
+            className="inline-flex items-center gap-1 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-glow"
           >
             <Plus className="h-4 w-4" /> New domain
           </button>
