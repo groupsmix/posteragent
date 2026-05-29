@@ -21,6 +21,7 @@ import { settingsRoutes } from './routes/settings'
 import { keyRoutes } from './routes/keys'
 import { managerRoutes } from './routes/manager'
 import { agentRoutes } from './routes/agent'
+import { teamRoutes } from './routes/team'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -74,6 +75,7 @@ api.route('/settings', settingsRoutes)
 api.route('/keys', keyRoutes)
 api.route('/manager', managerRoutes)
 api.route('/manager', agentRoutes)
+api.route('/team', teamRoutes)
 
 // Mount API routes under /api
 app.route('/api', api)

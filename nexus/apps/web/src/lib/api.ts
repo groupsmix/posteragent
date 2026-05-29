@@ -55,6 +55,34 @@ export interface AgentReply {
   steps: AgentStep[]
 }
 
+export interface TeamModel {
+  name: string
+  provider: string
+  isFree: boolean
+  configured: boolean
+}
+
+export interface TeamRole {
+  role: string
+  step: string
+  wave: number
+  taskType: string
+  primary: TeamModel
+  fallbacks: TeamModel[]
+  free_safety_net: boolean
+}
+
+export interface TeamWave {
+  wave: number
+  parallel: boolean
+  roles: TeamRole[]
+}
+
+export interface TeamReply {
+  roles: TeamRole[]
+  waves: TeamWave[]
+}
+
 // Resolve an API-relative asset path (e.g. /api/assets/r2/...) to an absolute
 // URL the browser can load. Absolute URLs are returned unchanged.
 export function assetUrl(path?: string | null): string | null {
@@ -189,6 +217,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ message, history }),
     }),
+
+  // AI agent team line-up
+  getTeam: () => apiFetch<TeamReply>('/api/team'),
 
   // Graveyard
   getGraveyard: () => apiFetch<{ products: Product[] }>('/api/graveyard'),

@@ -194,6 +194,47 @@ const STEPS: StepDef[] = [
 ]
 
 // ------------------------------------------------------------
+// The agent team: each step is a specialized role, and steps are grouped
+// into "waves". Steps in the same wave have no data dependency on each
+// other, so they run IN PARALLEL — many models working at once, each on
+// the job it's strongest at. Waves run in order. Every role's model comes
+// from the failover registry, so a role auto-falls-back to its next-best
+// model if the primary is unavailable.
+// ------------------------------------------------------------
+
+interface RoleMeta {
+  role: string
+  wave: number
+}
+
+export const STEP_META: Record<string, RoleMeta> = {
+  research_market: { role: 'Market Researcher', wave: 0 },
+  research_psychology: { role: 'Buyer Psychologist', wave: 0 },
+  research_keywords: { role: 'Keyword/SEO Analyst', wave: 0 },
+  generate_content: { role: 'Copywriter', wave: 1 },
+  generate_assets: { role: 'Designer', wave: 1 },
+  generate_seo: { role: 'SEO Editor', wave: 2 },
+  generate_title_variants: { role: 'Headline Writer', wave: 2 },
+  quality_competitor: { role: 'Competitor Analyst', wave: 2 },
+  revenue_estimate: { role: 'Revenue Forecaster', wave: 2 },
+  quality_editor: { role: 'Editor', wave: 3 },
+  quality_buyer_sim: { role: 'Buyer Simulator (QA)', wave: 4 },
+  humanize: { role: 'Humanizer', wave: 5 },
+  generate_platform_variants: { role: 'Platform Specialist', wave: 6 },
+  generate_social_content: { role: 'Social Media Writer', wave: 6 },
+  quality_ceo: { role: 'CEO Reviewer', wave: 7 },
+}
+
+// The canonical team line-up (role, the task type it runs, and its wave),
+// in pipeline order. Used by GET /api/team to show who does what.
+export const TEAM_ROLES = STEPS.map((s) => ({
+  step: s.name,
+  role: STEP_META[s.name]?.role || s.name,
+  wave: STEP_META[s.name]?.wave ?? 0,
+  taskType: s.taskType as string,
+}))
+
+// ------------------------------------------------------------
 // Engine
 // ------------------------------------------------------------
 
@@ -228,48 +269,23 @@ export class ProductWorkflow {
         `UPDATE workflow_runs SET status = 'running', started_at = ?, total_steps = ? WHERE id = ?`
       ).bind(now(), STEPS.length, runId).run()
 
+      // Group steps into dependency-safe waves; steps in a wave run in
+      // parallel (many models working at once), waves run in order.
+      const waves = new Map<number, { step: StepDef; index: number }[]>()
       for (let i = 0; i < STEPS.length; i++) {
         const step = STEPS[i]
-        const stepId = crypto.randomUUID()
+        const wave = STEP_META[step.name]?.wave ?? i
+        if (!waves.has(wave)) waves.set(wave, [])
+        waves.get(wave)!.push({ step, index: i })
+      }
 
-        // Insert + start
-        await this.env.DB.prepare(
-          `INSERT INTO workflow_steps (id, run_id, step_name, step_type, step_order, status, started_at)
-           VALUES (?, ?, ?, ?, ?, 'running', ?)`
-        ).bind(stepId, runId, step.name, step.taskType, i, now()).run()
-
+      for (const waveNo of [...waves.keys()].sort((a, b) => a - b)) {
+        const group = waves.get(waveNo)!
         await this.env.DB.prepare(
           `UPDATE workflow_runs SET current_step = ? WHERE id = ?`
-        ).bind(step.name, runId).run()
+        ).bind(group.map((g) => STEP_META[g.step.name]?.role || g.step.name).join(', '), runId).run()
 
-        try {
-          const prompt = step.buildPrompt(ctx)
-          const result = await this.callAI(step.taskType, prompt, step.outputFormat)
-          step.apply(ctx, result.output)
-          if (result.model_used === 'offline-template') ctx.data.usedOffline = true
-
-          await this.env.DB.prepare(
-            `UPDATE workflow_steps
-               SET status='completed', completed_at=?, ai_model_used=?, ai_models_tried=?,
-                   tokens_used=?, cost_usd=?, output_data=?
-             WHERE id=?`
-          ).bind(
-            now(),
-            result.model_used,
-            JSON.stringify(result.models_tried),
-            result.tokens_used ?? 0,
-            result.cost_usd ?? 0,
-            JSON.stringify({ preview: String(result.output).slice(0, 500) }),
-            stepId,
-          ).run()
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err)
-          console.error(`[workflow:${runId}] step ${step.name} failed:`, message)
-          await this.env.DB.prepare(
-            `UPDATE workflow_steps SET status='failed', completed_at=?, error=? WHERE id=?`
-          ).bind(now(), message, stepId).run()
-          // keep going with whatever ctx.data we already have
-        }
+        await Promise.all(group.map(({ step, index }) => this.runStep(ctx, runId, step, index)))
       }
 
       // Generate the real hero image from the prompt (no-op if no image
@@ -307,6 +323,46 @@ export class ProductWorkflow {
       await this.env.DB.prepare(
         `UPDATE products SET status='rejected', updated_at=? WHERE id=?`
       ).bind(now(), productId).run()
+    }
+  }
+
+  // Run a single role/step: record start, call its specialized model (with
+  // failover), apply the output, and record the result. A failure here is
+  // isolated — the run continues with whatever data we have.
+  private async runStep(ctx: WorkflowContext, runId: string, step: StepDef, index: number): Promise<void> {
+    const now = () => new Date().toISOString()
+    const stepId = crypto.randomUUID()
+    await this.env.DB.prepare(
+      `INSERT INTO workflow_steps (id, run_id, step_name, step_type, step_order, status, started_at)
+       VALUES (?, ?, ?, ?, ?, 'running', ?)`
+    ).bind(stepId, runId, step.name, step.taskType, index, now()).run()
+
+    try {
+      const prompt = step.buildPrompt(ctx)
+      const result = await this.callAI(step.taskType, prompt, step.outputFormat)
+      step.apply(ctx, result.output)
+      if (result.model_used === 'offline-template') ctx.data.usedOffline = true
+
+      await this.env.DB.prepare(
+        `UPDATE workflow_steps
+           SET status='completed', completed_at=?, ai_model_used=?, ai_models_tried=?,
+               tokens_used=?, cost_usd=?, output_data=?
+         WHERE id=?`
+      ).bind(
+        now(),
+        result.model_used,
+        JSON.stringify(result.models_tried),
+        result.tokens_used ?? 0,
+        result.cost_usd ?? 0,
+        JSON.stringify({ preview: String(result.output).slice(0, 500) }),
+        stepId,
+      ).run()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.error(`[workflow:${runId}] step ${step.name} failed:`, message)
+      await this.env.DB.prepare(
+        `UPDATE workflow_steps SET status='failed', completed_at=?, error=? WHERE id=?`
+      ).bind(now(), message, stepId).run()
     }
   }
 
