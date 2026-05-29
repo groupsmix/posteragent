@@ -16,6 +16,15 @@ import {
   FileText, ExternalLink,
 } from 'lucide-react'
 
+const DELIVERABLE_FORMATS: { key: string; label: string }[] = [
+  { key: 'planner', label: 'Planner' },
+  { key: 'checklist', label: 'Checklist' },
+  { key: 'template', label: 'Template' },
+  { key: 'prompt_pack', label: 'Prompt Pack' },
+  { key: 'guide', label: 'Guide' },
+  { key: 'workbook', label: 'Workbook' },
+]
+
 export default function ReviewPage() {
   const params = useParams<{ productId: string }>()
   const id = params?.productId as string
@@ -28,6 +37,7 @@ export default function ReviewPage() {
   const [showReject, setShowReject] = useState(false)
   const [editing, setEditing] = useState<null | 'title' | 'description' | 'tags'>(null)
   const [genning, setGenning] = useState(false)
+  const [fmt, setFmt] = useState('')
 
   useEffect(() => {
     api.getProductDetail(id).then(setP).catch(() => setP(null))
@@ -59,10 +69,10 @@ export default function ReviewPage() {
     await api.deleteProduct(p.id)
     router.push('/products')
   }
-  const genDeliverable = async () => {
+  const genDeliverable = async (format?: string) => {
     setGenning(true)
     try {
-      const r = await api.generateDeliverable(p.id)
+      const r = await api.generateDeliverable(p.id, format ? { format, force: true } : undefined)
       setP({ ...p, deliverable_url: r.deliverable_url, deliverable_format: r.deliverable_format })
     } catch {
       alert('Could not generate the deliverable right now. The free AI engine may be busy — try again in a moment.')
@@ -148,13 +158,37 @@ export default function ReviewPage() {
                   </a>
                 ) : (
                   <button
-                    onClick={genDeliverable}
+                    onClick={() => genDeliverable()}
                     disabled={genning}
                     className="inline-flex items-center gap-1 rounded-md bg-gradient-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow disabled:opacity-50"
                   >
                     <FileText className="h-3.5 w-3.5" /> {genning ? 'Generating…' : 'Generate deliverable'}
                   </button>
                 )}
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
+                <span className="text-xs text-muted-foreground">
+                  {p.deliverable_format ? `Format: ${p.deliverable_format}.` : 'Auto-picks a format.'} Force a different one:
+                </span>
+                <select
+                  value={fmt}
+                  onChange={(e) => setFmt(e.target.value)}
+                  className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                >
+                  <option value="">Auto (pick for me)</option>
+                  {DELIVERABLE_FORMATS.map((f) => (
+                    <option key={f.key} value={f.key}>{f.label}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => genDeliverable(fmt || undefined)}
+                  disabled={genning}
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:border-primary/40 disabled:opacity-50"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  {genning ? 'Generating…' : p.deliverable_url ? 'Regenerate' : 'Generate'}
+                </button>
               </div>
             </Section>
 

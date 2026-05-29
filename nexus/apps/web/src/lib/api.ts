@@ -296,11 +296,16 @@ export const api = {
     apiFetch<{ products: Product[] }>(`/api/products?${new URLSearchParams(filters as any)}`),
   getProduct: (id: string) => apiFetch<Product>(`/api/products/${id}`),
   getProductDetail: (id: string) => apiFetch<ProductDetail>(`/api/products/${id}/detail`),
-  generateDeliverable: (id: string) =>
-    apiFetch<{ ok: boolean; deliverable_url: string; deliverable_format: string }>(
-      `/api/products/${id}/generate-deliverable`,
+  generateDeliverable: (id: string, opts?: { format?: string; force?: boolean }) => {
+    const qs = new URLSearchParams()
+    if (opts?.format) qs.set('format', opts.format)
+    if (opts?.force) qs.set('force', '1')
+    const q = qs.toString()
+    return apiFetch<{ ok: boolean; deliverable_url: string; deliverable_format: string }>(
+      `/api/products/${id}/generate-deliverable${q ? `?${q}` : ''}`,
       { method: 'POST' },
-    ),
+    )
+  },
   updateProductSection: (id: string, patch: Partial<ProductDetail>) =>
     apiFetch<ProductDetail>(`/api/products/${id}/detail`, {
       method: 'PATCH',

@@ -13,10 +13,12 @@ export const productRoutes = new Hono<{ Bindings: Env }>()
 productRoutes.post('/:id/generate-deliverable', async (c) => {
   const productId = c.req.param('id')
   const force = c.req.query('force') === '1'
+  const format = c.req.query('format') || undefined
   if (!c.env.BROWSER) {
     return c.json({ error: 'Browser Rendering not enabled', code: 'no_browser' }, 400)
   }
-  const result = await generateDeliverableForProduct(c.env, productId, { force })
+  // A forced format override implies a regenerate.
+  const result = await generateDeliverableForProduct(c.env, productId, { force: force || !!format, format })
   if (!result) return c.json({ error: 'Could not generate deliverable' }, 422)
   return c.json({ ok: true, deliverable_url: result.url, deliverable_format: result.format })
 })
