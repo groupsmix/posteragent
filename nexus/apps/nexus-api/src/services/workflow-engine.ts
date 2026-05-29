@@ -550,6 +550,15 @@ export class ProductWorkflow {
       : (typeof ctx.data.market?.price_range?.avg === 'number' ? ctx.data.market.price_range.avg : null)
     const currency = ctx.data.revenue?.currency || 'USD'
 
+    // Snapshot the build context so the (separately-invoked) deliverable
+    // generator can write specific, on-brand content instead of generic filler.
+    const briefJson = JSON.stringify({
+      niche: ctx.userInput.niche ?? null,
+      psychology: ctx.data.psychology ?? null,
+      market: ctx.data.market ?? null,
+      keywords: ctx.data.keywords ?? ctx.data.tags ?? null,
+    })
+
     await this.env.DB.prepare(
       `UPDATE products
          SET name = COALESCE(?, name),
@@ -559,6 +568,7 @@ export class ProductWorkflow {
              currency = ?,
              revenue_estimate = ?,
              image_url = COALESCE(?, image_url),
+             brief_json = ?,
              generated_offline = ?,
              updated_at = ?
        WHERE id = ?`
@@ -570,6 +580,7 @@ export class ProductWorkflow {
       currency,
       ctx.data.revenue ? JSON.stringify(ctx.data.revenue) : null,
       ctx.data.image_url ?? null,
+      briefJson,
       ctx.data.usedOffline ? 1 : 0,
       now,
       productId,
