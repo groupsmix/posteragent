@@ -3,25 +3,31 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
-  Package, ShieldCheck, DollarSign, Rocket, Activity, ArrowRight, Bot, Plus,
+  TrendingUp, TrendingDown, Package, ShieldCheck, DollarSign, Rocket,
+  ArrowRight, Bot, ArrowUpRight, Activity, BarChart3, Zap, Clock,
+  AlertCircle,
 } from 'lucide-react'
-import { api, type AutopilotStatus } from '@/lib/api'
+import { api, type AutopilotStatus, type RevenueResponse, type Digest, type LearningStats } from '@/lib/api'
 import type { Product } from '@nexus/types'
-import { PageHeader, PageBody } from '@/components/shell/AppShell'
-import { SetupBanner } from '@/components/shared/SetupBanner'
-import { DigestCard } from '@/components/shared/DigestCard'
+import { PageBody } from '@/components/shell/AppShell'
 
 interface Counts { total: number; pending: number; approved: number; published: number }
 
 export default function HomePage() {
+  const [revenue, setRevenue] = useState<RevenueResponse | null>(null)
   const [auto, setAuto] = useState<AutopilotStatus | null>(null)
   const [spend, setSpend] = useState<{ today: number; cap: number } | null>(null)
   const [counts, setCounts] = useState<Counts | null>(null)
+  const [digest, setDigest] = useState<Digest | null>(null)
+  const [learning, setLearning] = useState<LearningStats | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    api.getRevenue().then(setRevenue).catch(() => setRevenue(null))
     api.getAutopilot().then(setAuto).catch(() => setAuto(null))
     api.getSpend().then(setSpend).catch(() => setSpend(null))
+    api.getDigestToday().then(setDigest).catch(() => setDigest(null))
+    api.getLearningStats().then(setLearning).catch(() => setLearning(null))
     api.getProducts({ limit: 200 })
       .then((r) => {
         const p: Product[] = r.products || []
@@ -35,124 +41,307 @@ export default function HomePage() {
       .catch((err) => setError(err.message))
   }, [])
 
+  const totalRevenue = revenue?.total_revenue ?? learning?.total_revenue ?? 0
+  const totalSales = revenue?.total_sales ?? learning?.total_sales_synced ?? 0
+  const patternsFound = learning?.patterns_extracted ?? 0
+  const autopilotBuilt = auto?.products_built ?? 0
+  const pendingReview = counts?.pending ?? 0
+
   return (
-    <>
-      <PageHeader
-        title="Command Center"
-        subtitle="Your AI product engine at a glance."
-      />
-      <PageBody className="space-y-6 max-w-6xl">
-        {error && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-            <p className="text-sm font-medium text-destructive">Connection error</p>
-            <p className="text-xs text-muted-foreground mt-1">{error}</p>
-          </div>
-        )}
-
-        <SetupBanner />
-        <DigestCard />
-
-        {/* Stat cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            icon={<Package className="h-4 w-4" />}
-            label="Products"
-            value={counts ? String(counts.total) : '—'}
-            sub={counts ? `${counts.published} published · ${counts.approved} approved` : ''}
-            href="/products"
-          />
-          <StatCard
-            icon={<ShieldCheck className="h-4 w-4" />}
-            label="Pending Review"
-            value={counts ? String(counts.pending) : '—'}
-            sub={counts && counts.pending > 0 ? 'Waiting for your call' : 'All caught up'}
-            href="/review"
-            accent={counts && counts.pending > 0}
-          />
-          <StatCard
-            icon={<Rocket className="h-4 w-4" />}
-            label="Autopilot"
-            value={auto ? (auto.enabled ? 'ON' : 'OFF') : '—'}
-            valueClass={auto?.enabled ? 'text-emerald-400' : ''}
-            sub={auto ? `${auto.products_built} built automatically` : ''}
-            href="/autopilot"
-          />
-          <StatCard
-            icon={<DollarSign className="h-4 w-4" />}
-            label="AI Spend Today"
-            value={spend ? `$${spend.today.toFixed(2)}` : '$0.00'}
-            sub={spend && spend.cap > 0 ? `of $${spend.cap.toFixed(2)} cap` : 'Free models · no cap'}
-            href="/settings/keys"
-          />
+    <PageBody className="max-w-6xl mx-auto space-y-6 py-8">
+      {error && (
+        <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
+          <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+          <p className="text-sm text-destructive">{error}</p>
         </div>
+      )}
 
-        {/* Quick actions */}
-        <div className="grid gap-3 sm:grid-cols-3">
-          <QuickAction href="/create" icon={<Plus className="h-4 w-4" />} label="Build a product" />
-          <QuickAction href="/ceo" icon={<Bot className="h-4 w-4" />} label="Talk to the CEO" />
-          <QuickAction href="/review" icon={<ShieldCheck className="h-4 w-4" />} label="Review queue" badge={counts?.pending} />
+      {/* Hero: greeting + primary metric */}
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {getGreeting()}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {getStatusLine(autopilotBuilt, pendingReview, totalSales)}
+          </p>
         </div>
-
-        {/* Recent activity */}
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="flex items-center gap-2 text-sm font-medium mb-3">
-            <Activity className="h-4 w-4 text-muted-foreground" />
-            Recent Activity
-          </h2>
-          {auto && auto.recent && auto.recent.length > 0 ? (
-            <ul className="divide-y divide-border">
-              {auto.recent.slice(0, 8).map((r, i) => (
-                <li key={i} className="flex items-center justify-between py-2.5 text-sm">
-                  <span className="text-foreground">{r.note}</span>
-                  <span className="text-xs text-muted-foreground ml-4 shrink-0">{new Date(r.created_at).toLocaleString()}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              No activity yet — build a product or enable Autopilot to get started.
-            </p>
-          )}
-        </div>
-      </PageBody>
-    </>
-  )
-}
-
-function StatCard({ icon, label, value, sub, href, valueClass, accent }: {
-  icon: React.ReactNode; label: string; value: string; sub?: string; href: string; valueClass?: string; accent?: boolean | null
-}) {
-  return (
-    <Link href={href} className="group rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-muted-foreground">{icon}</span>
-        <span className="text-xs font-medium">{label}</span>
+        <Link
+          href="/ceo"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          <Bot className="h-4 w-4" /> Ask AI
+        </Link>
       </div>
-      <div className={`mt-2.5 text-2xl font-semibold tabular-nums ${valueClass ?? ''}`}>{value}</div>
-      {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
-      {accent && <div className="mt-2 h-0.5 w-8 rounded-full bg-primary" />}
-    </Link>
+
+      {/* Revenue strip */}
+      <div className="grid gap-4 sm:grid-cols-4">
+        <MetricCard
+          label="Revenue"
+          value={`$${totalRevenue.toFixed(2)}`}
+          icon={<DollarSign className="h-4 w-4" />}
+          trend={totalRevenue > 0 ? 'up' : undefined}
+          href="/revenue"
+          accent
+        />
+        <MetricCard
+          label="Sales"
+          value={String(totalSales)}
+          icon={<BarChart3 className="h-4 w-4" />}
+          sub={revenue?.best_seller ? `Top: ${revenue.best_seller}` : undefined}
+          href="/revenue"
+        />
+        <MetricCard
+          label="Products"
+          value={String(counts?.total ?? 0)}
+          icon={<Package className="h-4 w-4" />}
+          sub={`${counts?.published ?? 0} live`}
+          href="/products"
+        />
+        <MetricCard
+          label="AI Spend"
+          value={`$${(spend?.today ?? 0).toFixed(2)}`}
+          icon={<Zap className="h-4 w-4" />}
+          sub={spend && spend.cap > 0 ? `of $${spend.cap.toFixed(2)} cap` : 'No cap set'}
+          href="/settings/keys"
+        />
+      </div>
+
+      {/* Two-column: left = pipeline / right = AI status */}
+      <div className="grid gap-4 lg:grid-cols-5">
+        {/* Pipeline status */}
+        <div className="lg:col-span-3 rounded-xl border border-border bg-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+            <h2 className="text-sm font-semibold flex items-center gap-2">
+              <Activity className="h-4 w-4 text-muted-foreground" />
+              Pipeline
+            </h2>
+            <Link href="/products" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              View all <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="divide-y divide-border">
+            <PipelineRow
+              label="Pending Review"
+              count={pendingReview}
+              icon={<ShieldCheck className="h-4 w-4" />}
+              href="/review"
+              highlight={pendingReview > 0}
+            />
+            <PipelineRow
+              label="Approved (ready to publish)"
+              count={counts?.approved ?? 0}
+              icon={<Package className="h-4 w-4" />}
+              href="/products"
+            />
+            <PipelineRow
+              label="Published & Live"
+              count={counts?.published ?? 0}
+              icon={<TrendingUp className="h-4 w-4 text-emerald-500" />}
+              href="/products"
+            />
+            <PipelineRow
+              label="Autopilot Built"
+              count={autopilotBuilt}
+              icon={<Rocket className="h-4 w-4" />}
+              href="/autopilot"
+            />
+          </div>
+        </div>
+
+        {/* AI engine status */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Autopilot card */}
+          <Link
+            href="/autopilot"
+            className="block rounded-xl border border-border bg-card p-5 hover:border-primary/30 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Autopilot</span>
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                auto?.enabled
+                  ? 'bg-emerald-500/15 text-emerald-500'
+                  : 'bg-muted text-muted-foreground'
+              }`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${auto?.enabled ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground'}`} />
+                {auto?.enabled ? 'Running' : 'Off'}
+              </span>
+            </div>
+            {auto?.enabled && (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-lg font-semibold tabular-nums">{auto.products_built}</div>
+                  <div className="text-[11px] text-muted-foreground">built automatically</div>
+                </div>
+                <div>
+                  <div className="text-lg font-semibold tabular-nums">{auto.per_run}/run</div>
+                  <div className="text-[11px] text-muted-foreground">products per cycle</div>
+                </div>
+              </div>
+            )}
+            {!auto?.enabled && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Enable to build products automatically while you sleep.
+              </p>
+            )}
+          </Link>
+
+          {/* Learning Loop card */}
+          <Link
+            href="/learning"
+            className="block rounded-xl border border-border bg-card p-5 hover:border-primary/30 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Learning Loop</span>
+              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-lg font-semibold tabular-nums">{patternsFound}</div>
+                <div className="text-[11px] text-muted-foreground">patterns found</div>
+              </div>
+              <div>
+                <div className="text-lg font-semibold tabular-nums">{totalSales}</div>
+                <div className="text-[11px] text-muted-foreground">sales analyzed</div>
+              </div>
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      {/* Today's digest (compact) */}
+      {digest && (
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+            <h2 className="text-sm font-semibold flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              Today
+            </h2>
+            <Link href="/digest" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              Full digest <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-border">
+            <DigestStat label="Built" value={digest.built_24h} />
+            <DigestStat label="Published" value={digest.published} />
+            <DigestStat label="Schedules" value={`${digest.schedules_succeeded}/${digest.schedules_ran}`} />
+            <DigestStat label="Errors" value={digest.errors.length} alert={digest.errors.length > 0} />
+          </div>
+        </div>
+      )}
+
+      {/* Recent autopilot activity */}
+      {auto?.recent && auto.recent.length > 0 && (
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+            <h2 className="text-sm font-semibold flex items-center gap-2">
+              <Activity className="h-4 w-4 text-muted-foreground" />
+              Recent Activity
+            </h2>
+            <Link href="/history" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              View all <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="divide-y divide-border">
+            {auto.recent.slice(0, 5).map((r, i) => (
+              <div key={i} className="flex items-center justify-between px-5 py-3 text-sm">
+                <span className="text-foreground truncate mr-4">{r.note}</span>
+                <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                  {formatRelativeTime(r.created_at)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </PageBody>
   )
 }
 
-function QuickAction({ href, icon, label, badge }: {
-  href: string; icon: React.ReactNode; label: string; badge?: number | null
+function MetricCard({ label, value, icon, sub, trend, href, accent }: {
+  label: string; value: string; icon: React.ReactNode; sub?: string
+  trend?: 'up' | 'down'; href: string; accent?: boolean
 }) {
   return (
     <Link
       href={href}
-      className="group flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors"
+      className={`group rounded-xl border bg-card p-4 transition-colors ${
+        accent ? 'border-primary/30 hover:border-primary/50' : 'border-border hover:border-primary/30'
+      }`}
     >
-      <span className="flex items-center gap-2.5 text-sm font-medium">
-        <span className="text-primary">{icon}</span>
+      <div className="flex items-center justify-between">
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+          {icon}
+        </span>
+        {trend === 'up' && <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />}
+        {trend === 'down' && <TrendingDown className="h-3.5 w-3.5 text-destructive" />}
+      </div>
+      <div className={`mt-3 text-2xl font-semibold tabular-nums ${accent ? 'text-emerald-400' : ''}`}>{value}</div>
+      <div className="mt-0.5 text-xs text-muted-foreground">{sub ?? label}</div>
+    </Link>
+  )
+}
+
+function PipelineRow({ label, count, icon, href, highlight }: {
+  label: string; count: number; icon: React.ReactNode; href: string; highlight?: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors"
+    >
+      <span className="flex items-center gap-3 text-sm">
+        <span className="text-muted-foreground">{icon}</span>
         {label}
       </span>
-      <span className="flex items-center gap-2">
-        {badge != null && badge > 0 && (
-          <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">{badge}</span>
+      <span className={`text-sm font-semibold tabular-nums ${
+        highlight ? 'text-primary' : 'text-foreground'
+      }`}>
+        {count}
+        {highlight && count > 0 && (
+          <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-primary animate-pulse" />
         )}
-        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
       </span>
     </Link>
   )
+}
+
+function DigestStat({ label, value, alert }: {
+  label: string; value: number | string; alert?: boolean
+}) {
+  return (
+    <div className="px-4 py-3.5 text-center">
+      <div className={`text-lg font-semibold tabular-nums ${alert ? 'text-destructive' : ''}`}>
+        {value}
+      </div>
+      <div className="text-[11px] text-muted-foreground">{label}</div>
+    </div>
+  )
+}
+
+function getGreeting(): string {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
+function getStatusLine(built: number, pending: number, sales: number): string {
+  const parts: string[] = []
+  if (built > 0) parts.push(`${built} products built by AI`)
+  if (pending > 0) parts.push(`${pending} awaiting your review`)
+  if (sales > 0) parts.push(`${sales} total sales`)
+  if (parts.length === 0) return 'Your AI engine is ready. Start building products or enable Autopilot.'
+  return parts.join(' · ')
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
 }
