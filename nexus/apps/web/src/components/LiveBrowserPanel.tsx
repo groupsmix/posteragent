@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Globe2, Loader2, ExternalLink, RefreshCw, Maximize2, Minimize2,
-  ArrowLeft, ArrowRight, Monitor, Camera, MousePointer,
+  ArrowLeft, ArrowRight, Monitor, MousePointer,
 } from 'lucide-react'
 import { api, API_BASE, type BrowserActionResult } from '@/lib/api'
 
@@ -11,8 +11,6 @@ interface LiveBrowserPanelProps {
   onScreenshot?: (url: string) => void
   className?: string
 }
-
-type BrowserMode = 'live' | 'ai'
 
 interface BrowserState {
   url: string
@@ -23,9 +21,7 @@ interface BrowserState {
   error: string | null
   history: string[]
   historyIndex: number
-  mode: BrowserMode
   statusText: string | null
-  iframeBlocked: boolean
 }
 
 const INITIAL_STATE: BrowserState = {
@@ -37,24 +33,7 @@ const INITIAL_STATE: BrowserState = {
   error: null,
   history: [],
   historyIndex: -1,
-  mode: 'live',
   statusText: null,
-  iframeBlocked: false,
-}
-
-const IFRAME_BLOCKED_SITES = [
-  'google.com', 'facebook.com', 'twitter.com', 'x.com', 'instagram.com',
-  'linkedin.com', 'github.com', 'youtube.com', 'amazon.com', 'etsy.com',
-  'gumroad.com',
-]
-
-function isLikelyIframeBlocked(url: string): boolean {
-  try {
-    const hostname = new URL(url).hostname.replace(/^www\./, '')
-    return IFRAME_BLOCKED_SITES.some((s) => hostname === s || hostname.endsWith('.' + s))
-  } catch {
-    return false
-  }
 }
 
 export function LiveBrowserPanel({ onScreenshot, className }: LiveBrowserPanelProps) {
@@ -63,91 +42,74 @@ export function LiveBrowserPanel({ onScreenshot, className }: LiveBrowserPanelPr
   const [expanded, setExpanded] = useState(false)
   const [actionLog, setActionLog] = useState<BrowserActionResult[]>([])
   const [fading, setFading] = useState(false)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
 
   const navigate = useCallback(async (targetUrl: string) => {
     if (!targetUrl.trim()) return
     const normalized = /^https?:\/\//i.test(targetUrl) ? targetUrl : `https://${targetUrl}`
-
-    const willBlock = isLikelyIframeBlocked(normalized)
 
     setState((prev) => ({
       ...prev,
       loading: true,
       error: null,
       url: normalized,
-      iframeBlocked: willBlock,
-      statusText: willBlock ? 'Loading via AI browser...' : 'Loading page...',
+      statusText: 'Navigating...',
     }))
     setUrlInput(normalized)
 
-    if (willBlock) {
-      try {
-        const result = await api.browserRun(normalized)
-        if (!result.ok) {
-          setState((prev) => ({
-            ...prev,
-            loading: false,
-            error: result.error || 'Failed to load page',
-            statusText: null,
-          }))
-          return
-        }
+    try {
+      const result = await api.browserRun(normalized)
+      if (!mountedRef.current) return
 
-        const screenshotUrl = result.screenshotUrl
-          ? `${API_BASE}${result.screenshotUrl}`
-          : null
-
-        setState((prev) => {
-          const newHistory = [...prev.history.slice(0, prev.historyIndex + 1), normalized]
-          return {
-            ...prev,
-            url: result.finalUrl || normalized,
-            title: result.title || '',
-            prevScreenshotUrl: prev.screenshotUrl,
-            screenshotUrl,
-            loading: false,
-            error: null,
-            history: newHistory,
-            historyIndex: newHistory.length - 1,
-            mode: 'ai',
-            statusText: null,
-            iframeBlocked: true,
-          }
-        })
-        setUrlInput(result.finalUrl || normalized)
-        if (screenshotUrl) {
-          setFading(true)
-          setTimeout(() => setFading(false), 400)
-          if (onScreenshot) onScreenshot(screenshotUrl)
-        }
-      } catch {
+      if (!result.ok) {
         setState((prev) => ({
           ...prev,
           loading: false,
-          error: 'Could not reach the browser engine.',
+          error: result.error || 'Failed to load page',
           statusText: null,
         }))
+        return
       }
-    } else {
+
+      const screenshotUrl = result.screenshotUrl
+        ? `${API_BASE}${result.screenshotUrl}`
+        : null
+
       setState((prev) => {
         const newHistory = [...prev.history.slice(0, prev.historyIndex + 1), normalized]
         return {
           ...prev,
-          url: normalized,
-          title: '',
-          screenshotUrl: null,
-          prevScreenshotUrl: null,
+          url: result.finalUrl || normalized,
+          title: result.title || '',
+          prevScreenshotUrl: prev.screenshotUrl,
+          screenshotUrl,
           loading: false,
           error: null,
           history: newHistory,
           historyIndex: newHistory.length - 1,
-          mode: 'live',
           statusText: null,
-          iframeBlocked: false,
         }
       })
+      setUrlInput(result.finalUrl || normalized)
+      if (screenshotUrl) {
+        setFading(true)
+        setTimeout(() => setFading(false), 400)
+        if (onScreenshot) onScreenshot(screenshotUrl)
+      }
+    } catch {
+      if (!mountedRef.current) return
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: 'Could not reach the browser engine. Make sure Browser Rendering is enabled on your Workers plan.',
+        statusText: null,
+      }))
     }
   }, [onScreenshot])
 
@@ -155,6 +117,7 @@ export function LiveBrowserPanel({ onScreenshot, className }: LiveBrowserPanelPr
     if (!state.url) return
     try {
       const result = await api.browserRun(state.url)
+      if (!mountedRef.current) return
       if (result.ok && result.screenshotUrl) {
         const url = `${API_BASE}${result.screenshotUrl}`
         setState((prev) => ({
@@ -188,24 +151,13 @@ export function LiveBrowserPanel({ onScreenshot, className }: LiveBrowserPanelPr
   }, [state.historyIndex, state.history, navigate])
 
   const refresh = useCallback(() => {
-    if (state.url) {
-      if (state.mode === 'live' && iframeRef.current) {
-        iframeRef.current.src = state.url
-      } else {
-        navigate(state.url)
-      }
-    }
-  }, [state.url, state.mode, navigate])
+    if (state.url) navigate(state.url)
+  }, [state.url, navigate])
 
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     navigate(urlInput)
   }
-
-  const switchToScreenshot = useCallback(() => {
-    setState((prev) => ({ ...prev, mode: 'ai', statusText: 'Capturing screenshot...' }))
-    takeScreenshot()
-  }, [takeScreenshot])
 
   const updateFromActions = useCallback((results: BrowserActionResult[]) => {
     setActionLog((prev) => [...prev, ...results])
@@ -216,7 +168,6 @@ export function LiveBrowserPanel({ onScreenshot, className }: LiveBrowserPanelPr
         ...prev,
         prevScreenshotUrl: prev.screenshotUrl,
         screenshotUrl: url,
-        mode: 'ai',
       }))
       setFading(true)
       setTimeout(() => setFading(false), 400)
@@ -240,9 +191,7 @@ export function LiveBrowserPanel({ onScreenshot, className }: LiveBrowserPanelPr
 
   const startPolling = useCallback(() => {
     if (pollingRef.current) return
-    pollingRef.current = setInterval(() => {
-      takeScreenshot()
-    }, 3000)
+    pollingRef.current = setInterval(() => { takeScreenshot() }, 3000)
   }, [takeScreenshot])
 
   const stopPolling = useCallback(() => {
@@ -314,15 +263,6 @@ export function LiveBrowserPanel({ onScreenshot, className }: LiveBrowserPanelPr
           </div>
         </form>
 
-        {state.mode === 'live' && state.url && (
-          <button
-            onClick={switchToScreenshot}
-            className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            title="Capture screenshot"
-          >
-            <Camera className="h-3.5 w-3.5" />
-          </button>
-        )}
         {state.url && (
           <a
             href={state.url}
@@ -343,25 +283,9 @@ export function LiveBrowserPanel({ onScreenshot, className }: LiveBrowserPanelPr
         </button>
       </div>
 
-      {/* Mode indicator */}
-      {state.url && (
-        <div className="flex items-center gap-2 border-b border-border/50 bg-muted/10 px-3 py-1">
-          <span className={`h-1.5 w-1.5 rounded-full ${state.mode === 'live' ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500 animate-pulse'}`} />
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            {state.mode === 'live' ? 'Live' : 'AI Browser'}
-          </span>
-          {state.mode === 'live' && (
-            <span className="text-[10px] text-muted-foreground/70">Interactive — click and scroll directly</span>
-          )}
-          {state.mode === 'ai' && (
-            <span className="text-[10px] text-muted-foreground/70">Screenshot mode — AI controls the browser</span>
-          )}
-        </div>
-      )}
-
       {/* Status bar */}
       {state.statusText && (
-        <div className="flex items-center gap-2 border-b border-border/50 bg-primary/5 px-3 py-1.5">
+        <div className="flex items-center gap-2 border-b border-border/50 bg-primary/5 px-3 py-1.5 shrink-0">
           <Loader2 className="h-3 w-3 animate-spin text-primary" />
           <span className="text-xs text-primary font-medium">{state.statusText}</span>
         </div>
@@ -377,7 +301,7 @@ export function LiveBrowserPanel({ onScreenshot, className }: LiveBrowserPanelPr
               <Globe2 className="absolute inset-0 m-auto h-5 w-5 text-primary/60" />
             </div>
             <p className="mt-3 text-sm text-muted-foreground">Loading page...</p>
-            <p className="mt-1 text-xs text-muted-foreground/50">{state.url}</p>
+            <p className="mt-1 text-xs text-muted-foreground/50 max-w-[250px] truncate">{state.url}</p>
           </div>
         )}
 
@@ -397,34 +321,8 @@ export function LiveBrowserPanel({ onScreenshot, className }: LiveBrowserPanelPr
           </div>
         )}
 
-        {/* Live iframe mode */}
-        {state.mode === 'live' && state.url && !state.error && (
-          <iframe
-            ref={iframeRef}
-            src={state.url}
-            className="h-full w-full border-0"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            onLoad={() => {
-              setState((prev) => ({ ...prev, loading: false }))
-              try {
-                const title = iframeRef.current?.contentDocument?.title
-                if (title) setState((prev) => ({ ...prev, title }))
-              } catch { /* cross-origin, ignore */ }
-            }}
-            onError={() => {
-              setState((prev) => ({
-                ...prev,
-                iframeBlocked: true,
-                mode: 'ai',
-                statusText: 'Site blocked iframe — switching to AI browser...',
-              }))
-              takeScreenshot()
-            }}
-          />
-        )}
-
-        {/* AI screenshot mode with crossfade */}
-        {state.mode === 'ai' && state.screenshotUrl && !state.error && (
+        {/* Screenshot with crossfade */}
+        {state.screenshotUrl && !state.error && (
           <div className="relative h-full w-full">
             {state.prevScreenshotUrl && fading && (
               /* eslint-disable-next-line @next/next/no-img-element */
@@ -437,12 +335,12 @@ export function LiveBrowserPanel({ onScreenshot, className }: LiveBrowserPanelPr
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={state.screenshotUrl}
-              alt={state.title || 'Browser screenshot'}
+              alt={state.title || 'Browser view'}
               className={`h-full w-full object-contain object-top transition-opacity duration-400 ${fading ? 'opacity-0 animate-fadeIn' : 'opacity-100'}`}
             />
             <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-md bg-black/60 px-2.5 py-1 text-[10px] text-white/70 backdrop-blur-sm">
               <MousePointer className="h-3 w-3" />
-              AI controlled
+              AI browser
             </div>
           </div>
         )}
@@ -451,14 +349,12 @@ export function LiveBrowserPanel({ onScreenshot, className }: LiveBrowserPanelPr
         {!state.url && !state.error && !state.loading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center px-4">
-              <div className="relative mx-auto mb-4">
-                <div className="h-16 w-16 rounded-2xl bg-primary/5 flex items-center justify-center mx-auto">
-                  <Monitor className="h-8 w-8 text-primary/30" />
-                </div>
+              <div className="h-16 w-16 rounded-2xl bg-primary/5 flex items-center justify-center mx-auto mb-4">
+                <Monitor className="h-8 w-8 text-primary/30" />
               </div>
-              <p className="text-sm font-medium text-foreground/80">Live Browser</p>
-              <p className="mt-1 text-xs text-muted-foreground max-w-[200px] mx-auto">
-                Enter a URL to browse live, or ask the AI to navigate for you
+              <p className="text-sm font-medium text-foreground/80">AI Browser</p>
+              <p className="mt-1 text-xs text-muted-foreground max-w-[220px] mx-auto">
+                Enter a URL above or ask the AI to browse for you
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 {['google.com', 'gumroad.com', 'etsy.com'].map((site) => (
