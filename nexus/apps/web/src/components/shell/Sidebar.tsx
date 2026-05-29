@@ -8,6 +8,7 @@ import {
   Settings as SettingsIcon, Globe2, Megaphone, History,
   Bot, CalendarClock, Rocket, LayoutDashboard, ChevronDown, DollarSign,
   Menu, X, LayoutGrid, Workflow, Brain, Sunrise, Shirt,
+  ShoppingCart, Briefcase, Link2, FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -20,20 +21,23 @@ const topItems: Item[] = [
 
 const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
   {
-    title: 'Build',
+    title: 'Domains',
     items: [
-      { to: '/products', label: 'Products', icon: Package },
-      { to: '/review', label: 'Review', icon: ShieldCheck },
+      { to: '/products', label: 'Digital Products', icon: Package },
       { to: '/pod', label: 'Print on Demand', icon: Shirt },
-      { to: '/autopilot', label: 'Autopilot', icon: Rocket },
+      { to: '/marketing', label: 'Content & Media', icon: FileText },
+      { to: '/manager/domains', label: 'Freelance Services', icon: Briefcase },
+      { to: '/trends', label: 'Affiliate Marketing', icon: Link2 },
+      { to: '/publish', label: 'E-Commerce & Retail', icon: ShoppingCart },
     ],
   },
   {
-    title: 'Money',
+    title: 'Engine',
     items: [
+      { to: '/autopilot', label: 'Autopilot', icon: Rocket },
+      { to: '/review', label: 'Review Queue', icon: ShieldCheck },
       { to: '/revenue', label: 'Revenue', icon: DollarSign },
       { to: '/learning', label: 'Learning Loop', icon: Brain },
-      { to: '/marketing', label: 'Marketing', icon: Megaphone },
     ],
   },
   {
@@ -45,7 +49,6 @@ const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
       { to: '/schedules', label: 'Schedules', icon: CalendarClock },
       { to: '/history', label: 'History', icon: History },
       { to: '/settings', label: 'Settings', icon: SettingsIcon },
-      { to: '/manager/domains', label: 'Domains', icon: LayoutGrid },
     ],
   },
 ]
