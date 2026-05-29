@@ -38,7 +38,7 @@ export default function BrowserPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><Globe2 className="h-6 w-6" /> Browser automation</span>}
+        title={<span className="flex items-center gap-2"><Globe2 className="h-5 w-5" /> Browser automation</span>}
         subtitle="Open a real web page in a headless browser, read it, and capture a screenshot. The CEO can do this too — just ask it to browse a URL."
       />
       <PageBody className="max-w-3xl space-y-5">
@@ -80,7 +80,7 @@ export default function BrowserPage() {
           <button
             type="submit"
             disabled={busy || !url.trim()}
-            className="inline-flex items-center gap-2 rounded-lg bg-gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe2 className="h-4 w-4" />}
             {busy ? 'Opening…' : 'Open & read'}

@@ -40,10 +40,10 @@ export default function ManagerSocialPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><Megaphone className="h-6 w-6" /> Social channels</span>}
+        title={<span className="flex items-center gap-2"><Megaphone className="h-5 w-5" /> Social channels</span>}
         subtitle="Channels the AI will post promotional content to."
         actions={
-          <button onClick={add} className="inline-flex items-center gap-1 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-glow">
+          <button onClick={add} className="inline-flex items-center gap-1 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-glow">
             <Plus className="h-4 w-4" /> New channel
           </button>
         }

@@ -21,7 +21,7 @@ export default function TeamPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><Users className="h-6 w-6" /> AI Agent Team</span>}
+        title={<span className="flex items-center gap-2"><Users className="h-5 w-5" /> AI Agent Team</span>}
         subtitle="Many specialized models work together — each on what it's best at, in parallel, with automatic fallback. The CEO orchestrates them."
       />
       <PageBody>
@@ -46,7 +46,7 @@ export default function TeamPage() {
             {waves.map((w, i) => (
               <div key={w.wave} className="rounded-xl border border-border bg-card/50 p-4">
                 <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-primary text-xs text-primary-foreground">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
                     {i + 1}
                   </span>
                   Stage {i + 1}

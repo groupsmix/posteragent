@@ -26,7 +26,7 @@ export default function ManagerAIPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><Cpu className="h-6 w-6" /> AI models</span>}
+        title={<span className="flex items-center gap-2"><Cpu className="h-5 w-5" /> AI models</span>}
         subtitle="Registry with tier, provider, status and per-model cost."
       />
       <PageBody>

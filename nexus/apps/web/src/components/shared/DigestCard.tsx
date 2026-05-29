@@ -36,10 +36,10 @@ export function DigestCard() {
   ]
 
   return (
-    <div className="rounded-2xl border border-border bg-gradient-card p-5 shadow-card">
+    <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
-          <Sunrise className="h-4 w-4 text-primary" /> Morning report
+          <Sunrise className="h-4 w-4 text-primary" /> Morning Report
         </h2>
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground">{d.date}</span>
@@ -60,7 +60,7 @@ export function DigestCard() {
               </span>
               <span className="text-xs">{it.label}</span>
             </div>
-            <div className="mt-1.5 text-xl font-bold">{it.value}</div>
+            <div className="mt-1.5 text-xl font-semibold">{it.value}</div>
             {it.sub && <div className="text-[11px] text-muted-foreground">{it.sub}</div>}
           </Link>
         ))}

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { KeyRound, Check, ExternalLink, Gauge } from 'lucide-react'
 import { api, type ApiKeyInfo } from '@/lib/api'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 
 const GROUP_ORDER: ApiKeyInfo['group'][] = ['AI', 'Publishing', 'Social', 'Email']
 const GROUP_BLURB: Record<ApiKeyInfo['group'], string> = {
@@ -75,27 +76,29 @@ export default function ApiKeysPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><KeyRound className="h-6 w-6" /> API keys</span>}
-        subtitle="Add provider keys here — no terminal needed. Keys are stored server-side and used by the engine immediately."
+        title={<span className="flex items-center gap-2"><KeyRound className="h-5 w-5" /> API Keys</span>}
+        subtitle="Add provider keys here — keys are stored server-side and used by the engine immediately."
       />
       <PageBody>
         {loading ? (
-          <div className="text-sm text-muted-foreground">Loading…</div>
+          <div className="flex justify-center py-16">
+            <LoadingSpinner />
+          </div>
         ) : (
-          <div className="max-w-2xl space-y-8">
-            {/* AI spend meter + daily cap */}
-            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <div className="max-w-2xl space-y-6">
+            {/* AI spend meter */}
+            <section className="rounded-xl border border-border bg-card p-5 space-y-3">
               <div className="flex items-center gap-2">
-                <Gauge className="h-4 w-4" />
-                <h3 className="text-sm font-semibold">AI spend (paid models)</h3>
+                <Gauge className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-medium">AI Spend</h3>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold tabular-nums">${(spend?.today ?? 0).toFixed(2)}</span>
+                <span className="text-2xl font-semibold tabular-nums">${(spend?.today ?? 0).toFixed(2)}</span>
                 <span className="text-xs text-muted-foreground">
                   used today{spend && spend.cap > 0 ? ` of $${spend.cap.toFixed(2)} cap` : ' · no cap set'}
                 </span>
                 {spend?.cap_reached && (
-                  <span className="text-xs text-amber-600 dark:text-amber-400">cap reached — using free models</span>
+                  <span className="text-xs text-warning">cap reached — using free models</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -109,26 +112,28 @@ export default function ApiKeysPage() {
                 <button
                   onClick={saveCap}
                   disabled={capDraft === ''}
-                  className="rounded-lg border border-border px-3 py-2 text-sm font-medium disabled:opacity-50"
+                  className="rounded-lg border border-border px-3 py-2 text-sm font-medium disabled:opacity-50 hover:bg-muted transition-colors"
                 >
                   Set cap
                 </button>
               </div>
               <p className="text-xs text-muted-foreground">
-                When the cap is hit, paid models pause for the day and the free engines take over — your products still get built.
+                When the cap is hit, paid models pause for the day and the free engines take over.
               </p>
-            </div>
+            </section>
+
+            {/* Key groups */}
             {GROUP_ORDER.map((group) => {
               const items = keys.filter((k) => k.group === group)
               if (items.length === 0) return null
               return (
-                <div key={group} className="space-y-3">
+                <section key={group} className="space-y-3">
                   <div>
-                    <h3 className="text-sm font-semibold">{group}</h3>
+                    <h3 className="text-sm font-medium">{group}</h3>
                     <p className="text-xs text-muted-foreground">{GROUP_BLURB[group]}</p>
                   </div>
                   {items.map((k) => (
-                    <div key={k.key} className="rounded-xl border border-border bg-card p-4 space-y-2">
+                    <div key={k.key} className="rounded-xl border border-border bg-card p-4 space-y-2.5">
                       <div className="flex items-center justify-between">
                         <label className="text-sm font-medium">{k.label}</label>
                         <div className="flex items-center gap-3">
@@ -143,7 +148,7 @@ export default function ApiKeysPage() {
                             </button>
                           )}
                           {k.configured ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                            <span className="inline-flex items-center gap-1 text-xs text-emerald-500">
                               <Check className="h-3 w-3" /> Set
                             </span>
                           ) : (
@@ -162,7 +167,7 @@ export default function ApiKeysPage() {
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-[11px] text-muted-foreground">{k.key}</span>
                         {k.help?.startsWith('http') ? (
-                          <a href={k.help} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground">
+                          <a href={k.help} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
                             Get key <ExternalLink className="h-3 w-3" />
                           </a>
                         ) : (
@@ -171,19 +176,21 @@ export default function ApiKeysPage() {
                       </div>
                     </div>
                   ))}
-                </div>
+                </section>
               )
             })}
+
+            {/* Save bar */}
             <div className="sticky bottom-0 -mx-6 md:-mx-8 px-6 md:px-8 py-4 border-t border-border bg-background/95 backdrop-blur flex items-center gap-3">
               <button
                 onClick={save}
                 disabled={!dirty || saving}
-                className="rounded-lg bg-gradient-primary text-primary-foreground px-5 py-2 text-sm font-semibold shadow-glow disabled:opacity-50"
+                className="rounded-lg bg-primary text-primary-foreground px-5 py-2 text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {saving ? 'Saving…' : 'Save keys'}
               </button>
               {savedAt && !dirty && (
-                <span className="inline-flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400">
+                <span className="inline-flex items-center gap-1 text-sm text-emerald-500">
                   <Check className="h-4 w-4" /> Saved — the engine is using them now.
                 </span>
               )}

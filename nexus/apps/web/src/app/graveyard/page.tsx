@@ -41,7 +41,7 @@ export default function GraveyardPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><Skull className="h-6 w-6" /> Graveyard</span>}
+        title={<span className="flex items-center gap-2"><Skull className="h-5 w-5" /> Graveyard</span>}
         subtitle="Rejected and expired products. Approve to resurface."
       />
       <PageBody>

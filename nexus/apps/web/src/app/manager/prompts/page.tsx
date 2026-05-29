@@ -23,7 +23,7 @@ export default function ManagerPromptsPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><FileCode className="h-6 w-6" /> Prompts</span>}
+        title={<span className="flex items-center gap-2"><FileCode className="h-5 w-5" /> Prompts</span>}
         subtitle="Editable prompt templates layered into every workflow step."
       />
       <PageBody>

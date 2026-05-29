@@ -9,6 +9,7 @@ interface Settings extends BaseSettings {
   default_currency?: string
 }
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -36,51 +37,61 @@ export default function SettingsPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><SettingsIcon className="h-6 w-6" /> Settings</span>}
+        title={<span className="flex items-center gap-2"><SettingsIcon className="h-5 w-5" /> Settings</span>}
         subtitle="Global defaults for the NEXUS engine."
       />
       <PageBody>
         {loading || !settings ? (
-          <div className="text-sm text-muted-foreground">Loading…</div>
+          <div className="flex justify-center py-16">
+            <LoadingSpinner />
+          </div>
         ) : (
-          <div className="max-w-2xl space-y-4">
-            <Row label="Default language">
-              <input
-                className="input w-48"
-                defaultValue={settings.default_language ?? 'en'}
-                onBlur={(e) => update({ default_language: e.target.value })}
+          <div className="max-w-2xl space-y-6">
+            <section className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h2 className="text-sm font-medium">General</h2>
+              <Row label="Default language">
+                <input
+                  className="input w-48"
+                  defaultValue={settings.default_language ?? 'en'}
+                  onBlur={(e) => update({ default_language: e.target.value })}
+                />
+              </Row>
+              <Row label="Default currency">
+                <input
+                  className="input w-24"
+                  defaultValue={settings.default_currency ?? 'USD'}
+                  onBlur={(e) => update({ default_currency: e.target.value })}
+                />
+              </Row>
+              <Row label="Graveyard resurface (days)">
+                <input
+                  type="number"
+                  className="input w-24"
+                  defaultValue={settings.graveyard_resurface_days ?? 30}
+                  onBlur={(e) => update({ graveyard_resurface_days: Number(e.target.value) })}
+                />
+              </Row>
+            </section>
+
+            <section className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h2 className="text-sm font-medium">Automation</h2>
+              <ToggleRow
+                label="CEO review required"
+                checked={!!settings.ceo_review_required}
+                onChange={(v) => update({ ceo_review_required: v })}
               />
-            </Row>
-            <Row label="Default currency">
-              <input
-                className="input w-24"
-                defaultValue={settings.default_currency ?? 'USD'}
-                onBlur={(e) => update({ default_currency: e.target.value })}
+              <ToggleRow
+                label="Auto-publish after approval"
+                checked={!!settings.auto_publish_after_approval}
+                onChange={(v) => update({ auto_publish_after_approval: v })}
               />
-            </Row>
-            <ToggleRow
-              label="CEO review required"
-              checked={!!settings.ceo_review_required}
-              onChange={(v) => update({ ceo_review_required: v })}
-            />
-            <ToggleRow
-              label="Auto-publish after approval"
-              checked={!!settings.auto_publish_after_approval}
-              onChange={(v) => update({ auto_publish_after_approval: v })}
-            />
-            <ToggleRow
-              label="Trend radar enabled"
-              checked={!!settings.trend_radar_enabled}
-              onChange={(v) => update({ trend_radar_enabled: v })}
-            />
-            <Row label="Graveyard resurface (days)">
-              <input
-                type="number"
-                className="input w-24"
-                defaultValue={settings.graveyard_resurface_days ?? 30}
-                onBlur={(e) => update({ graveyard_resurface_days: Number(e.target.value) })}
+              <ToggleRow
+                label="Trend radar enabled"
+                checked={!!settings.trend_radar_enabled}
+                onChange={(v) => update({ trend_radar_enabled: v })}
               />
-            </Row>
+            </section>
+
             {saving && <div className="text-xs text-muted-foreground">Saving…</div>}
 
             <AccessControl />
@@ -129,11 +140,11 @@ function AccessControl() {
   }
 
   return (
-    <div className="mt-8 rounded-xl border border-border bg-card p-5">
-      <div className="flex items-center gap-2 text-sm font-semibold">
-        <Lock className="h-4 w-4" /> Access password
+    <section className="rounded-xl border border-border bg-card p-5">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <Lock className="h-4 w-4" /> Access Password
       </div>
-      <p className="mt-1 text-sm text-muted-foreground">
+      <p className="mt-1.5 text-sm text-muted-foreground">
         {isProtected
           ? 'The dashboard is locked. Change or remove the password below.'
           : 'Anyone with the URL can use NEXUS right now. Set a password to lock it.'}
@@ -152,14 +163,14 @@ function AccessControl() {
         <div className="flex items-center gap-2">
           <button
             onClick={save} disabled={busy || next.length < 4 || (!!isProtected && !current)}
-            className="inline-flex items-center gap-2 rounded-md bg-gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             <ShieldCheck className="h-4 w-4" /> {isProtected ? 'Change password' : 'Lock dashboard'}
           </button>
           {isProtected && (
             <button
               onClick={disable} disabled={busy || !current}
-              className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
+              className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50 transition-colors"
             >
               Remove gate
             </button>
@@ -169,14 +180,14 @@ function AccessControl() {
           <p className={`text-sm ${msg.kind === 'ok' ? 'text-emerald-500' : 'text-destructive'}`}>{msg.text}</p>
         )}
       </div>
-    </div>
+    </section>
   )
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-      <div className="text-sm">{label}</div>
+    <div className="flex items-center justify-between gap-4">
+      <div className="text-sm text-muted-foreground">{label}</div>
       {children}
     </div>
   )
@@ -195,10 +206,10 @@ function ToggleRow({
     <Row label={label}>
       <button
         onClick={() => onChange(!checked)}
-        className={`h-6 w-11 rounded-full transition-colors ${checked ? 'bg-primary' : 'bg-muted'}`}
+        className={`relative h-6 w-11 rounded-full transition-colors ${checked ? 'bg-primary' : 'bg-muted'}`}
       >
         <div
-          className={`h-5 w-5 bg-background rounded-full shadow transform transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`}
+          className={`h-5 w-5 bg-background rounded-full shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`}
         />
       </button>
     </Row>

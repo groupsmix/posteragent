@@ -63,7 +63,7 @@ export default function AutopilotPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><Rocket className="h-6 w-6" /> Autopilot</span>}
+        title={<span className="flex items-center gap-2"><Rocket className="h-5 w-5" /> Autopilot</span>}
         subtitle="Flip it ON and the CEO loops on its own: research a niche → build a real product with the agent team → track it. Listing happens via Publish center once a store token is connected."
       />
       <PageBody className="space-y-6">
@@ -90,7 +90,7 @@ export default function AutopilotPage() {
                   {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Run one cycle now
                 </button>
                 <button onClick={toggle} disabled={busy}
-                  className={`inline-flex items-center gap-2 rounded-md px-5 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50 ${status.enabled ? 'bg-destructive' : 'bg-gradient-primary'}`}>
+                  className={`inline-flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50 transition-colors ${status.enabled ? 'bg-destructive hover:bg-destructive/90' : 'bg-primary hover:bg-primary/90'}`}>
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
                   {status.enabled ? 'Turn OFF' : 'Turn ON'}
                 </button>

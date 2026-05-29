@@ -48,7 +48,7 @@ export default function CreatePage() {
               <Link
                 key={d.id}
                 href={`/${d.slug}`}
-                className="group relative h-44 rounded-2xl border border-border bg-gradient-card p-5 flex flex-col justify-between overflow-hidden hover:border-primary/40 hover:shadow-glow transition-all"
+                className="group relative h-44 rounded-2xl border border-border bg-gradient-card p-5 flex flex-col justify-between overflow-hidden hover:border-primary/40 hover:transition-all"
               >
                 {d.color && (
                   <div

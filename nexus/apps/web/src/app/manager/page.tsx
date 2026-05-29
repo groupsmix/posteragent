@@ -25,7 +25,7 @@ export default function ManagerIndexPage() {
             <Link
               key={href}
               href={href}
-              className="group rounded-2xl border border-border bg-gradient-card p-5 hover:border-primary/40 hover:shadow-glow transition-all"
+              className="group rounded-2xl border border-border bg-gradient-card p-5 hover:border-primary/40 hover:transition-all"
             >
               <Icon className="h-6 w-6 text-primary/80 mb-3" />
               <div className="font-semibold">{label}</div>
