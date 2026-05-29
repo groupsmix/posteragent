@@ -693,6 +693,15 @@ export const api = {
       body: JSON.stringify({ url, instruction }),
     }),
 
+  // Hyperbeam live browser
+  hyperbeamCreate: (url?: string) =>
+    apiFetch<{ ok: boolean; sessionId: string; embedUrl: string }>('/api/hyperbeam/session', {
+      method: 'POST',
+      body: JSON.stringify(url ? { url } : {}),
+    }),
+  hyperbeamDestroy: (sessionId: string) =>
+    apiFetch<{ ok: boolean }>(`/api/hyperbeam/session/${sessionId}`, { method: 'DELETE' }),
+
   // AI agent team line-up
   getTeam: () => apiFetch<TeamReply>('/api/team'),
 

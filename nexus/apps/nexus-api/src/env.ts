@@ -42,4 +42,7 @@ export interface Env {
 
   // Cloudflare API token for Images API
   CF_API_TOKEN?: string
+
+  // Hyperbeam API key for live browser sessions
+  HYPERBEAM_API_KEY?: string
 }
