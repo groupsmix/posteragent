@@ -48,8 +48,8 @@ export default function HistoryPage() {
             No runs yet.
           </div>
         ) : (
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="rounded-2xl border border-border bg-card overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="text-xs uppercase text-muted-foreground border-b border-border">
                 <tr>
                   <th className="text-left px-4 py-2">Product</th>
