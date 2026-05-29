@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronRight, Clock, Zap, Search, ShoppingCart, Megaphone,
   Globe, PanelRightOpen, PanelRightClose, Image as ImageIcon,
 } from 'lucide-react'
+// Quick-action icons kept for TOOL_LABELS/ACTION_ICONS maps
 import { api, API_BASE, type ManagerMessage, type AgentStep, type ProductScoreResponse, type ActionResult, type ActionStep as ActionStepType } from '@/lib/api'
 import { ScoreBadge } from '@/components/shared/ScoreBadge'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
@@ -289,31 +290,6 @@ export default function CeoManagerPage() {
     }
   }
 
-  const runQuickAction = async (actionType: string, label: string, extra?: Record<string, string>) => {
-    if (busy) return
-    setBusy(true)
-    setTurns((prev) => [...prev, { role: 'user', content: label }])
-    try {
-      const message = label
-      const history: ManagerMessage[] = turns.map((t) => ({ role: t.role, content: t.content }))
-      const res = await api.managerAgent(message, history)
-      const turn: ChatTurn = { role: 'assistant', content: res.reply, steps: res.steps }
-      const managerRes = await api.managerChat(message, history).catch(() => null)
-      if (managerRes?.action_results && managerRes.action_results.length > 0) {
-        turn.action_results = managerRes.action_results
-        addToHistory(managerRes.action_results)
-      }
-      setTurns((prev) => [...prev, turn])
-    } catch {
-      setTurns((prev) => [
-        ...prev,
-        { role: 'assistant', content: `Failed to execute ${actionType}. Please try again.` },
-      ])
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <>
       <PageHeader
@@ -412,45 +388,6 @@ export default function CeoManagerPage() {
               </div>
             )}
             <div ref={endRef} />
-          </div>
-
-          {/* Quick action buttons */}
-          <div className="mt-1 mb-2 flex flex-wrap gap-2">
-            <button
-              onClick={() => runQuickAction('check_sales', 'Check my Gumroad sales')}
-              disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 disabled:opacity-50 transition-colors"
-            >
-              <Zap className="h-3 w-3" /> Check my sales
-            </button>
-            <button
-              onClick={() => runQuickAction('create_product', 'Create a product about productivity')}
-              disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 disabled:opacity-50 transition-colors"
-            >
-              <ShoppingCart className="h-3 w-3" /> Create a product
-            </button>
-            <button
-              onClick={() => runQuickAction('list_product', 'List my latest product on all platforms')}
-              disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 disabled:opacity-50 transition-colors"
-            >
-              <Globe className="h-3 w-3" /> List on all platforms
-            </button>
-            <button
-              onClick={() => runQuickAction('analyze_niche', 'Analyze the "wedding planning" niche')}
-              disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 disabled:opacity-50 transition-colors"
-            >
-              <Search className="h-3 w-3" /> Analyze a niche
-            </button>
-            <button
-              onClick={() => runQuickAction('run_campaign', 'Run marketing for my top product')}
-              disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 disabled:opacity-50 transition-colors"
-            >
-              <Megaphone className="h-3 w-3" /> Run marketing
-            </button>
           </div>
 
           {/* Suggestions (shown only at start) */}
