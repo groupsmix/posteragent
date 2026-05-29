@@ -139,7 +139,10 @@ export async function getProducts(
   const conditions: string[] = []
   const params: unknown[] = []
 
-  if (filters.status) {
+  if (filters.graveyard) {
+    conditions.push('status = ?')
+    params.push('graveyard')
+  } else if (filters.status) {
     conditions.push('status = ?')
     params.push(filters.status)
   }
@@ -147,11 +150,6 @@ export async function getProducts(
   if (filters.domain_id) {
     conditions.push('domain_id = ?')
     params.push(filters.domain_id)
-  }
-
-  if (filters.graveyard) {
-    conditions.push('status = ?')
-    params.push('graveyard')
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
@@ -264,17 +262,23 @@ export async function createWorkflowRun(db: D1Database, productId: string) {
     .bind(id, productId, 'queued')
     .run()
 
-  // Create default steps
+  // Create default steps — aligned with the 15 canonical STEPS in workflow-engine.ts.
   const steps = [
     { name: 'research_market', type: 'research_market', order: 1 },
     { name: 'research_psychology', type: 'research_psychology', order: 2 },
     { name: 'research_keywords', type: 'research_keywords', order: 3 },
-    { name: 'generate_content', type: 'generate_content', order: 4 },
-    { name: 'generate_seo', type: 'generate_seo_tags', order: 5 },
-    { name: 'quality_editor', type: 'quality_editor', order: 6 },
-    { name: 'quality_buyer_sim', type: 'quality_buyer_sim', order: 7 },
-    { name: 'quality_ceo', type: 'quality_ceo', order: 8 },
-    { name: 'finalize', type: 'finalize', order: 9 },
+    { name: 'generate_content', type: 'generate_long_form', order: 4 },
+    { name: 'generate_assets', type: 'generate_image_prompt', order: 5 },
+    { name: 'generate_seo', type: 'generate_seo_tags', order: 6 },
+    { name: 'generate_title_variants', type: 'generate_short_copy', order: 7 },
+    { name: 'quality_editor', type: 'quality_editor', order: 8 },
+    { name: 'quality_buyer_sim', type: 'quality_buyer_sim', order: 9 },
+    { name: 'quality_competitor', type: 'quality_competitor', order: 10 },
+    { name: 'humanize', type: 'humanize', order: 11 },
+    { name: 'revenue_estimate', type: 'revenue_estimate', order: 12 },
+    { name: 'generate_platform_variants', type: 'platform_variation', order: 13 },
+    { name: 'generate_social_content', type: 'social_adaptation', order: 14 },
+    { name: 'quality_ceo', type: 'quality_ceo', order: 15 },
   ]
 
   for (const step of steps) {
