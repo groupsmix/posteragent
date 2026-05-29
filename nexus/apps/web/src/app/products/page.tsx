@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Package } from 'lucide-react'
+import { Package, Trash2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import type { Product } from '@nexus/types'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
@@ -11,6 +11,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     api
@@ -19,6 +20,21 @@ export default function ProductsPage() {
       .catch(() => setProducts([]))
       .finally(() => setLoading(false))
   }, [])
+
+  const handleDelete = async (p: Product) => {
+    if (!confirm(`Delete "${p.name || 'Untitled'}"? This removes the product and its files for good.`)) return
+    setDeletingId(p.id)
+    const prev = products
+    setProducts((list) => list.filter((x) => x.id !== p.id))
+    try {
+      await api.deleteProduct(p.id)
+    } catch {
+      setProducts(prev)
+      alert('Failed to delete. Please try again.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   return (
     <>
@@ -59,6 +75,14 @@ export default function ProductsPage() {
                   >
                     View →
                   </Link>
+                  <button
+                    onClick={() => handleDelete(p)}
+                    disabled={deletingId === p.id}
+                    title="Delete product"
+                    className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-red-500 hover:border-red-500/40 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </li>
             ))}

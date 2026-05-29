@@ -5,13 +5,13 @@ export const runtime = 'edge'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { api, assetUrl } from '@/lib/api'
+import { api, assetUrl, API_BASE } from '@/lib/api'
 import type { ProductDetail } from '@nexus/types'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 import { ScoreBar } from '@/components/shared/ScoreBar'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import {
-  CheckCircle2, XCircle, AlertTriangle, ThumbsDown, ThumbsUp, Edit3,
+  CheckCircle2, XCircle, AlertTriangle, ThumbsDown, ThumbsUp, Edit3, Trash2, Download,
 } from 'lucide-react'
 
 export default function ReviewPage() {
@@ -50,6 +50,11 @@ export default function ReviewPage() {
     setP({ ...p, ...patch })
     await api.updateProductSection(p.id, patch)
     setEditing(null)
+  }
+  const del = async () => {
+    if (!confirm(`Delete "${p.name || 'this product'}"? This removes it and its files for good.`)) return
+    await api.deleteProduct(p.id)
+    router.push('/products')
   }
 
   return (
@@ -392,9 +397,23 @@ export default function ReviewPage() {
         </div>
 
         <div className="sticky bottom-0 mt-8 -mx-6 md:-mx-8 px-6 md:px-8 py-4 border-t border-border bg-background/95 backdrop-blur flex items-center justify-between gap-3">
-          <Link href="/products" className="text-sm text-muted-foreground hover:text-foreground">
-            ← Back to products
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/products" className="text-sm text-muted-foreground hover:text-foreground">
+              ← Back to products
+            </Link>
+            <a
+              href={`${API_BASE}/api/products/${p.id}/deliverable`}
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <Download className="h-4 w-4" /> Download
+            </a>
+            <button
+              onClick={del}
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-red-500"
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </button>
+          </div>
           <div className="flex items-center gap-2">
             {showReject ? (
               <div className="flex items-center gap-2">

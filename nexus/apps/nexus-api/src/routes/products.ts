@@ -1,8 +1,91 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
 import type { ProductFilters } from '../types'
+import { buildZip } from '../services/zip'
 
 export const productRoutes = new Hono<{ Bindings: Env }>()
+
+// GET /products/:id/deliverable - Download the finished product as a ZIP
+// (product brief markdown + tags + hero image when present).
+productRoutes.get('/:id/deliverable', async (c) => {
+  try {
+    const productId = c.req.param('id')
+    const product = await c.env.DB.prepare(`
+      SELECT p.*, d.name AS domain_name, cat.name AS category_name
+      FROM products p
+      JOIN domains d ON p.domain_id = d.id
+      JOIN categories cat ON p.category_id = cat.id
+      WHERE p.id = ?
+    `).bind(productId).first<any>()
+
+    if (!product) return c.json({ error: 'Product not found' }, 404)
+
+    const tags: string[] = typeof product.tags === 'string' && product.tags.length
+      ? product.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
+      : []
+
+    const slug = (product.name || 'product')
+      .toString().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'product'
+
+    const md = [
+      `# ${product.name ?? 'Untitled product'}`,
+      ``,
+      `- Domain: ${product.domain_name}`,
+      `- Category: ${product.category_name}`,
+      `- Niche: ${product.niche ?? '—'}`,
+      `- Price: ${typeof product.price === 'number' ? `${product.price} ${product.currency ?? 'USD'}` : '—'}`,
+      `- AI score: ${typeof product.ai_score === 'number' ? `${product.ai_score}/10` : '—'}`,
+      `- Generated: ${product.generated_offline ? 'offline template' : 'real AI'}`,
+      ``,
+      `## Description`,
+      ``,
+      product.description ?? '(no description)',
+      ``,
+      `## Tags`,
+      ``,
+      tags.length ? tags.map((t) => `- ${t}`).join('\n') : '(none)',
+      ``,
+    ].join('\n')
+
+    const files: { name: string; data: Uint8Array | string }[] = [
+      { name: `${slug}/product.md`, data: md },
+      { name: `${slug}/tags.txt`, data: tags.join('\n') },
+    ]
+
+    // Attach the hero image from R2 if one was generated. The key comes from
+    // product.image_url (/api/assets/r2/<key>) or, as a fallback, the assets table.
+    let r2Key: string | null = null
+    if (typeof product.image_url === 'string' && product.image_url.includes('/assets/r2/')) {
+      r2Key = product.image_url.split('/assets/r2/')[1] || null
+    }
+    if (!r2Key) {
+      const asset = await c.env.DB.prepare(
+        `SELECT r2_key FROM assets WHERE product_id = ? AND r2_key IS NOT NULL LIMIT 1`
+      ).bind(productId).first<any>()
+      r2Key = asset?.r2_key ?? null
+    }
+    if (r2Key) {
+      const obj = await c.env.ASSETS.get(r2Key)
+      if (obj) {
+        const bytes = new Uint8Array(await obj.arrayBuffer())
+        const ext = r2Key.endsWith('.png') ? 'png' : 'jpg'
+        files.push({ name: `${slug}/hero-image.${ext}`, data: bytes })
+      }
+    }
+
+    const zip = buildZip(files)
+    return new Response(zip, {
+      headers: {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename="${slug}.zip"`,
+        'Cache-Control': 'no-store',
+      },
+    })
+  } catch (err) {
+    console.error('Error building deliverable:', err)
+    return c.json({ error: 'Failed to build deliverable' }, 500)
+  }
+})
 
 // GET /products - List products with filters
 productRoutes.get('/', async (c) => {
