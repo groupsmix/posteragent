@@ -12,7 +12,7 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:878
 export interface ApiKeyInfo {
   key: string
   label: string
-  group: 'AI' | 'Publishing' | 'Social'
+  group: 'AI' | 'Publishing' | 'Social' | 'Email'
   help: string
   worker: 'ai' | 'api'
   configured: boolean
@@ -95,6 +95,7 @@ export interface Schedule {
   active: number
   last_run_at: string | null
   created_at: string
+  email: string | null
 }
 
 export interface NewSchedule {
@@ -105,6 +106,7 @@ export interface NewSchedule {
   topic?: string
   instructions?: string
   frequency: string
+  email?: string
 }
 
 export interface Delivery {
@@ -114,6 +116,7 @@ export interface Delivery {
   kind: string
   product_id: string | null
   webhook_status: string | null
+  email_status: string | null
   created_at: string
 }
 
