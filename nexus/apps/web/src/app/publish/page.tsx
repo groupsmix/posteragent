@@ -8,12 +8,23 @@ import { PageHeader, PageBody } from '@/components/shell/AppShell'
 export default function PublishPage() {
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     api.getPublishQueue()
       .then((r) => setItems(r.items || []))
       .finally(() => setLoading(false))
   }, [])
+
+  async function publish(id: string) {
+    setBusy((b) => ({ ...b, [id]: true }))
+    try {
+      await api.publishItem(id)
+      setItems((list) => list.filter((it) => it.id !== id))
+    } catch {
+      setBusy((b) => ({ ...b, [id]: false }))
+    }
+  }
 
   return (
     <>
@@ -37,10 +48,11 @@ export default function PublishPage() {
                   <div className="text-xs text-muted-foreground">{item.platform_name ?? '—'}</div>
                 </div>
                 <button
-                  onClick={() => api.publishItem(item.id)}
-                  className="inline-flex items-center gap-1 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-glow"
+                  onClick={() => publish(item.id)}
+                  disabled={busy[item.id]}
+                  className="inline-flex items-center gap-1 rounded-lg bg-gradient-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow-glow disabled:opacity-60"
                 >
-                  <Send className="h-4 w-4" /> Publish
+                  <Send className="h-4 w-4" /> {busy[item.id] ? 'Publishing…' : 'Publish'}
                 </button>
               </li>
             ))}

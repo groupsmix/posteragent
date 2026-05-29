@@ -10,7 +10,7 @@ winnerRoutes.get('/', async (c) => {
     const offset = parseInt(c.req.query('offset') || '0')
     
     const result = await c.env.DB.prepare(`
-      SELECT * FROM winner_patterns ORDER BY detection_count DESC LIMIT ? OFFSET ?
+      SELECT * FROM winner_patterns ORDER BY confidence DESC, sample_count DESC LIMIT ? OFFSET ?
     `).bind(limit, offset).all()
     
     return c.json({

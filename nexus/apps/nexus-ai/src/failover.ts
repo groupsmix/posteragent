@@ -4,6 +4,7 @@
 // Core failover logic with automatic model switching on failure.
 
 import { AI_REGISTRY } from './registry'
+import { offlineGenerate } from './offline'
 import type { AIRegistryEntry, TaskType, FailoverResult, FailoverOptions, AIStatusCache } from './types'
 
 interface Env {
@@ -128,9 +129,21 @@ export async function runWithFailover(
     }
   }
 
-  throw new Error(
-    `All AI models failed for task "${taskType}". Tried: ${tried.join(', ')}`
+  // No provider was available (or all failed). Rather than aborting the whole
+  // workflow, fall back to the deterministic offline generator so the user
+  // still gets a complete, reviewable product. Real providers take over the
+  // moment any API key is configured.
+  console.log(
+    `[NEXUS-AI] OFFLINE fallback for task "${taskType}" (tried: ${tried.join(', ') || 'none'})`
   )
+  const output = offlineGenerate(taskType, prompt, outputFormat)
+  return {
+    output,
+    model_used: 'offline-template',
+    models_tried: tried,
+    tokens_used: 0,
+    cost_usd: 0,
+  }
 }
 
 // ============================================================

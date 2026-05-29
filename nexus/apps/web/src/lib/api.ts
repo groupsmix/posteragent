@@ -119,7 +119,7 @@ export const api = {
   restoreProduct: (id: string) => apiFetch<void>(`/api/graveyard/${id}/restore`, { method: 'POST' }),
 
   // History
-  getHistory: () => apiFetch<{ runs: any[] }>('/api/workflow/history'),
+  getHistory: () => apiFetch<{ runs: any[] }>('/api/history'),
 
   // Publish
   getPublishQueue: () => apiFetch<{ items: any[] }>('/api/publish'),

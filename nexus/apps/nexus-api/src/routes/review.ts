@@ -21,8 +21,8 @@ reviewRoutes.post('/:productId/approve', async (c) => {
     // Create approval review record
     const reviewId = crypto.randomUUID()
     await c.env.DB.prepare(`
-      INSERT INTO reviews (id, product_id, reviewer_type, overall_score, approved, feedback, created_at)
-      VALUES (?, ?, 'user', 10, 1, 'Approved for publishing', ?)
+      INSERT INTO reviews (id, product_id, decision, ai_score, feedback, reviewed_at)
+      VALUES (?, ?, 'approved', 10, 'Approved for publishing', ?)
     `).bind(reviewId, productId, now).run()
     
     // Invalidate cache
@@ -46,10 +46,13 @@ reviewRoutes.post('/:productId/reject', async (c) => {
       return c.json({ error: 'Feedback is required' }, 400)
     }
     
-    // Update product status to rejected
+    // Update product status to rejected and move it to the graveyard so it
+    // remains visible (and restorable) instead of silently disappearing.
     const result = await c.env.DB.prepare(`
-      UPDATE products SET status = 'rejected', updated_at = ? WHERE id = ?
-    `).bind(now, productId).run()
+      UPDATE products
+      SET status = 'rejected', graveyard_at = ?, graveyard_reason = ?, updated_at = ?
+      WHERE id = ?
+    `).bind(now, feedback, now, productId).run()
     
     if (result.meta.changes === 0) {
       return c.json({ error: 'Product not found' }, 404)
@@ -58,8 +61,8 @@ reviewRoutes.post('/:productId/reject', async (c) => {
     // Create rejection review record
     const reviewId = crypto.randomUUID()
     await c.env.DB.prepare(`
-      INSERT INTO reviews (id, product_id, reviewer_type, overall_score, approved, feedback, created_at)
-      VALUES (?, ?, 'user', 0, 0, ?, ?)
+      INSERT INTO reviews (id, product_id, decision, ai_score, feedback, reviewed_at)
+      VALUES (?, ?, 'rejected', 0, ?, ?)
     `).bind(reviewId, productId, feedback, now).run()
     
     // Invalidate cache
@@ -97,8 +100,8 @@ reviewRoutes.post('/:productId/revise', async (c) => {
     const revisionData = JSON.stringify({ sections })
     
     await c.env.DB.prepare(`
-      INSERT INTO reviews (id, product_id, reviewer_type, overall_score, approved, feedback, created_at)
-      VALUES (?, ?, 'revision', 5, 0, ?, ?)
+      INSERT INTO reviews (id, product_id, decision, ai_score, revised_sections, reviewed_at)
+      VALUES (?, ?, 'revision', 5, ?, ?)
     `).bind(reviewId, productId, revisionData, now).run()
     
     // Invalidate cache
@@ -117,8 +120,8 @@ reviewRoutes.get('/:productId', async (c) => {
     const productId = c.req.param('productId')
     
     const reviews = await c.env.DB.prepare(`
-      SELECT id, reviewer_type, overall_score, approved, feedback, created_at
-      FROM reviews WHERE product_id = ? ORDER BY created_at DESC
+      SELECT id, decision, ai_score, section_scores, feedback, revised_sections, reviewed_at
+      FROM reviews WHERE product_id = ? ORDER BY reviewed_at DESC
     `).bind(productId).all()
     
     return c.json({ reviews: reviews.results })
