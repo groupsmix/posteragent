@@ -158,14 +158,34 @@ export function assetUrl(path?: string | null): string | null {
   return `${API_BASE}${path}`
 }
 
+const TOKEN_KEY = 'nexus_token'
+
+export function getToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return window.localStorage.getItem(TOKEN_KEY)
+}
+export function setToken(token: string | null) {
+  if (typeof window === 'undefined') return
+  if (token) window.localStorage.setItem(TOKEN_KEY, token)
+  else window.localStorage.removeItem(TOKEN_KEY)
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = getToken()
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   })
+  if (res.status === 401) {
+    // Token missing/stale — drop it and let the gate take over.
+    setToken(null)
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('nexus-auth-required'))
+    throw new Error('Unauthorized')
+  }
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: res.statusText }))
     throw new Error(error.message || error.error || `API error: ${res.status}`)
@@ -334,4 +354,16 @@ export const api = {
   // Publish
   getPublishQueue: () => apiFetch<{ items: any[] }>('/api/publish'),
   publishItem: (id: string) => apiFetch<void>(`/api/publish/${id}`, { method: 'POST' }),
+
+  // Access gate
+  getAuthStatus: () => apiFetch<{ protected: boolean }>('/api/auth/status'),
+  login: (password: string) =>
+    apiFetch<{ token: string }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ password }) }),
+  setupPassword: (password: string, current?: string) =>
+    apiFetch<{ ok: boolean; token: string }>('/api/auth/setup', {
+      method: 'POST',
+      body: JSON.stringify({ password, current }),
+    }),
+  disableAuth: (current: string) =>
+    apiFetch<{ ok: boolean }>('/api/auth/disable', { method: 'POST', body: JSON.stringify({ current }) }),
 }

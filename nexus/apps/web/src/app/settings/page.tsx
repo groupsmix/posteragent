@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Settings as SettingsIcon } from 'lucide-react'
-import { api } from '@/lib/api'
+import { Settings as SettingsIcon, Lock, ShieldCheck } from 'lucide-react'
+import { api, setToken } from '@/lib/api'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
 export default function SettingsPage() {
@@ -77,10 +77,94 @@ export default function SettingsPage() {
               />
             </Row>
             {saving && <div className="text-xs text-muted-foreground">Saving…</div>}
+
+            <AccessControl />
           </div>
         )}
       </PageBody>
     </>
+  )
+}
+
+function AccessControl() {
+  const [isProtected, setIsProtected] = useState<boolean | null>(null)
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+
+  useEffect(() => {
+    api.getAuthStatus().then((s) => setIsProtected(s.protected)).catch(() => setIsProtected(null))
+  }, [])
+
+  async function save() {
+    setBusy(true); setMsg(null)
+    try {
+      const { token } = await api.setupPassword(next, isProtected ? current : undefined)
+      setToken(token)
+      setIsProtected(true)
+      setCurrent(''); setNext('')
+      setMsg({ kind: 'ok', text: 'Access password saved. The dashboard is now locked.' })
+    } catch (e) {
+      setMsg({ kind: 'err', text: e instanceof Error ? e.message : 'Failed to save' })
+    } finally { setBusy(false) }
+  }
+
+  async function disable() {
+    setBusy(true); setMsg(null)
+    try {
+      await api.disableAuth(current)
+      setToken(null)
+      setIsProtected(false)
+      setCurrent(''); setNext('')
+      setMsg({ kind: 'ok', text: 'Access gate removed — the dashboard is open again.' })
+    } catch (e) {
+      setMsg({ kind: 'err', text: e instanceof Error ? e.message : 'Failed to disable' })
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="mt-8 rounded-xl border border-border bg-card p-5">
+      <div className="flex items-center gap-2 text-sm font-semibold">
+        <Lock className="h-4 w-4" /> Access password
+      </div>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {isProtected
+          ? 'The dashboard is locked. Change or remove the password below.'
+          : 'Anyone with the URL can use NEXUS right now. Set a password to lock it.'}
+      </p>
+      <div className="mt-4 space-y-3">
+        {isProtected && (
+          <input
+            type="password" className="input w-full" placeholder="Current password"
+            value={current} onChange={(e) => setCurrent(e.target.value)}
+          />
+        )}
+        <input
+          type="password" className="input w-full" placeholder={isProtected ? 'New password' : 'Choose a password'}
+          value={next} onChange={(e) => setNext(e.target.value)}
+        />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={save} disabled={busy || next.length < 4 || (!!isProtected && !current)}
+            className="inline-flex items-center gap-2 rounded-md bg-gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+          >
+            <ShieldCheck className="h-4 w-4" /> {isProtected ? 'Change password' : 'Lock dashboard'}
+          </button>
+          {isProtected && (
+            <button
+              onClick={disable} disabled={busy || !current}
+              className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
+            >
+              Remove gate
+            </button>
+          )}
+        </div>
+        {msg && (
+          <p className={`text-sm ${msg.kind === 'ok' ? 'text-emerald-500' : 'text-destructive'}`}>{msg.text}</p>
+        )}
+      </div>
+    </div>
   )
 }
 

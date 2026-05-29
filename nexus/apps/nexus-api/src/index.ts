@@ -24,6 +24,7 @@ import { agentRoutes } from './routes/agent'
 import { teamRoutes } from './routes/team'
 import { scheduleRoutes, runDueSchedules } from './routes/schedules'
 import { autopilotRoutes, runAutopilot } from './routes/autopilot'
+import { authRoutes, getAccessHash } from './routes/auth'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -57,7 +58,24 @@ app.get('/health', (c) => {
 // API version prefix
 const api = new Hono<{ Bindings: Env }>()
 
+// Access gate — once a password is set, every /api route requires a valid
+// bearer token. Auth + asset routes stay open (asset URLs load via <img>/
+// downloads that can't carry an Authorization header), and the gate is
+// inactive until a password is set so the owner can't lock themselves out.
+api.use('*', async (c, next) => {
+  if (c.req.method === 'OPTIONS') return next()
+  const path = c.req.path // full path, e.g. /api/auth/login
+  if (path.startsWith('/api/auth/') || path.startsWith('/api/assets/')) return next()
+  const hash = await getAccessHash(c.env)
+  if (!hash) return next() // not protected yet
+  const auth = c.req.header('Authorization') || ''
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
+  if (token !== hash) return c.json({ error: 'Unauthorized', code: 'auth_required' }, 401)
+  return next()
+})
+
 // Mount all route modules
+api.route('/auth', authRoutes)
 api.route('/workflow', workflowRoutes)
 api.route('/products', productRoutes)
 api.route('/review', reviewRoutes)
