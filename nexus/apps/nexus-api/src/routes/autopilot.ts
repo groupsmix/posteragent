@@ -5,6 +5,7 @@ import { buildListingPayload } from './publish'
 import { publishToPlatform } from '../services/publishers'
 import { getSetting, setSetting } from '../services/shared'
 import { safeJson } from '../services/shared'
+import { applyPatterns } from '../services/learning'
 
 // ============================================================
 // Autopilot "money engine" — when ON, the CEO loops on its own:
@@ -175,16 +176,32 @@ async function pickNiche(env: Env): Promise<{ domainSlug: string; categorySlug: 
   if (!dom) return null
   const domainSlug = dom.slug
 
+  // Inject winner patterns from the learning loop to guide niche selection
+  const weights = await applyPatterns(env).catch(() => ({
+    preferred_niches: [] as string[],
+    preferred_price_range: null as string | null,
+    title_keywords: [] as string[],
+    top_tags: [] as string[],
+    prompt_injection: '',
+  }))
+
   const avoid = existing.slice(0, 25)
   for (let attempt = 0; attempt < 2; attempt++) {
-    const prompt = [
+    const promptParts = [
       `You are a market researcher. Propose ONE specific, validated, high-demand digital-product niche for the "${domainSlug}" domain.`,
       `Requirements: name a concrete target audience AND the specific outcome/problem solved (e.g. "Notion CRM template for freelance designers", not "business templates").`,
+    ]
+    if (weights.prompt_injection) {
+      promptParts.push(weights.prompt_injection)
+      promptParts.push('Use the winning patterns above to inform your niche selection — lean toward niches similar to what already sold well.')
+    }
+    promptParts.push(
       `It must be DIFFERENT from everything in this avoid-list (no rephrasings, no synonyms):`,
       avoid.length ? avoid.map((n) => `- ${n}`).join('\n') : '- (none yet)',
       `Do NOT use vague words like "essentials", "bundle", "stuff" or "general".`,
       `Return strict JSON: {"niche": string, "audience": string, "rationale": string}.`,
-    ].join('\n')
+    )
+    const prompt = promptParts.join('\n')
     const j = (await callAIJson(env, prompt)) as { niche?: string } | null
     const niche = (j?.niche || '').trim()
     if (niche && !isGeneric(niche) && !isNearDuplicate(niche, existing)) {

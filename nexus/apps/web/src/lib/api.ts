@@ -228,6 +228,33 @@ export interface DigestError {
   created_at: string
 }
 
+// Learning Loop types
+export interface LearningPatternRow {
+  id: string
+  pattern_type: string
+  pattern_value: string
+  times_seen: number
+  times_sold: number
+  total_revenue: number
+  confidence_score: number
+  confidence: number
+  sample_count: number
+  domain_id: string | null
+  category_id: string | null
+  source: string
+  last_seen_at: string | null
+  updated_at: string
+}
+
+export interface LearningStats {
+  total_sales_synced: number
+  total_revenue: number
+  patterns_extracted: number
+  top_patterns: LearningPatternRow[]
+  last_sync_at: string | null
+  last_analysis_at: string | null
+  improvement_trend: { period: string; revenue: number }[]
+}
 export interface Digest {
   date: string
   built_24h: number
@@ -516,6 +543,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(to ? { to } : {}),
     }),
+
+  // Learning Loop
+  getLearningStats: () => apiFetch<LearningStats>('/api/learning/stats'),
+  getLearningPatterns: () => apiFetch<{ patterns: LearningPatternRow[]; total: number }>('/api/learning/patterns'),
+  syncLearning: () => apiFetch<{ ok: boolean; synced: number; total_revenue: number; error?: string }>('/api/learning/sync', { method: 'POST' }),
+  analyzeLearning: () => apiFetch<{ ok: boolean; patterns_created: number; patterns_updated: number }>('/api/learning/analyze', { method: 'POST' }),
 
   // Access gate
   getAuthStatus: () => apiFetch<{ protected: boolean }>('/api/auth/status'),

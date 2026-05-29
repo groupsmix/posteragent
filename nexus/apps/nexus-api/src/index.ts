@@ -32,6 +32,7 @@ import { browserRoutes } from './routes/browser'
 import { backfillDeliverables } from './services/deliverable'
 import { digestRoutes } from './routes/digest'
 import { sendDailyDigest } from './services/digest'
+import { learningRoutes, runLearningSync } from './routes/learning'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -111,6 +112,7 @@ api.route('/revenue', revenueRoutes)
 api.route('/marketing', marketingRoutes)
 api.route('/browser', browserRoutes)
 api.route('/digest', digestRoutes)
+api.route('/learning', learningRoutes)
 
 // Mount API routes under /api
 app.route('/api', api)
@@ -145,6 +147,7 @@ export default {
     ctx.waitUntil(runMarketing(env, ctx))
     ctx.waitUntil(backfillDeliverables(env))
     ctx.waitUntil(sendDailyDigest(env))
+    ctx.waitUntil(runLearningSync(env))
   },
 }
 
