@@ -7,16 +7,18 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@nexus/types": "workspace:*",
     "@nexus/prompts": "workspace:*",
+    "@nexus/types": "workspace:*",
     "hono": "^4.0.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240117.0",
     "typescript": "^5.3.3",
+    "vitest": "^4.1.7",
     "wrangler": "^3.0.0"
   }
 }

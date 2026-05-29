@@ -33,7 +33,17 @@ export default function AutopilotPage() {
     if (!status) return
     setBusy(true)
     try {
-      await api.toggleAutopilot(!status.enabled)
+      await api.toggleAutopilot({ enabled: !status.enabled })
+      await refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function setFlag(patch: { auto_approve?: boolean; auto_publish?: boolean }) {
+    setBusy(true)
+    try {
+      await api.toggleAutopilot(patch)
       await refresh()
     } finally {
       setBusy(false)
@@ -87,6 +97,22 @@ export default function AutopilotPage() {
               </div>
             </div>
 
+            {/* Auto-approve / auto-publish */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <ToggleRow
+                label={`Auto-approve products scoring ≥ ${status.min_score}`}
+                hint="Skip manual review for high-scoring products."
+                on={status.auto_approve} busy={busy}
+                onClick={() => setFlag({ auto_approve: !status.auto_approve })}
+              />
+              <ToggleRow
+                label="Auto-publish approved products"
+                hint="List them automatically when a store token is connected."
+                on={status.auto_publish} busy={busy}
+                onClick={() => setFlag({ auto_publish: !status.auto_publish })}
+              />
+            </div>
+
             {/* Stats */}
             <div className="grid gap-4 sm:grid-cols-3">
               <Stat icon={<Package className="h-5 w-5" />} label="Products built by autopilot" value={String(status.products_built)} />
@@ -138,6 +164,21 @@ export default function AutopilotPage() {
         )}
       </PageBody>
     </>
+  )
+}
+
+function ToggleRow({ label, hint, on, busy, onClick }: { label: string; hint: string; on: boolean; busy: boolean; onClick: () => void }) {
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-border bg-card/50 p-4">
+      <div className="min-w-0 pr-3">
+        <div className="text-sm font-medium">{label}</div>
+        <div className="text-xs text-muted-foreground">{hint}</div>
+      </div>
+      <button onClick={onClick} disabled={busy} aria-pressed={on}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${on ? 'bg-emerald-500' : 'bg-muted'}`}>
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
+      </button>
+    </div>
   )
 }
 
