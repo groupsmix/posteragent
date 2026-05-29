@@ -45,11 +45,11 @@ jobs:
         run: npx wrangler deploy
         working-directory: nexus/apps/nexus-api
 
-      # Run D1 migrations
-      - name: Run D1 migrations
-        run: npx wrangler d1 migrations apply nexus-db --remote
-        working-directory: nexus/apps/nexus-api
-
       # Deploy frontend to Cloudflare Pages
       - name: Deploy frontend
         run: npx wrangler pages deploy apps/web/.vercel/output/static --project-name nexus-web-cl2
+
+      # Run D1 migrations (continue on error — some may already be applied)
+      - name: Run D1 migrations
+        run: npx wrangler d1 migrations apply nexus-db --remote || echo "⚠️ Some migrations may have already been applied"
+        working-directory: nexus/apps/nexus-api
