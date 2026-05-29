@@ -10,6 +10,7 @@ import type { ProductDetail } from '@nexus/types'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 import { ScoreBar } from '@/components/shared/ScoreBar'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { Markdown } from '@/components/Markdown'
 import {
   CheckCircle2, XCircle, AlertTriangle, ThumbsDown, ThumbsUp, Edit3, Trash2, Download,
 } from 'lucide-react'
@@ -158,9 +159,7 @@ export default function ReviewPage() {
                   className="input min-h-32 w-full"
                 />
               ) : (
-                <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
-                  {p.description}
-                </p>
+                <Markdown className="text-sm text-foreground/90">{p.description || ''}</Markdown>
               )}
             </Section>
 
