@@ -3,10 +3,18 @@
 import { useEffect, useState } from 'react'
 import { Cpu } from 'lucide-react'
 import { api } from '@/lib/api'
+import type { AIModelDashboardStatus } from '@nexus/types'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
+interface AIModelRow extends AIModelDashboardStatus {
+  rank?: number
+  has_key?: boolean
+  cost_per_1m_tokens?: number
+  monthly_calls?: number
+}
+
 export default function ManagerAIPage() {
-  const [models, setModels] = useState<any[]>([])
+  const [models, setModels] = useState<AIModelRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -42,10 +50,10 @@ export default function ManagerAIPage() {
                   <tr key={m.id} className="border-b border-border/60 last:border-0">
                     <td className="px-4 py-2 font-mono text-xs">{m.name || m.id}</td>
                     <td className="px-4 py-2 text-xs">{m.provider}</td>
-                    <td className="px-4 py-2 text-xs">{m.rank ?? m.tier ?? '—'}</td>
+                    <td className="px-4 py-2 text-xs">{m.rank ?? '—'}</td>
                     <td className="px-4 py-2 text-xs">{m.has_key ? 'yes' : 'no'}</td>
                     <td className="px-4 py-2 text-right font-mono text-xs">
-                      {m.cost_per_1m_tokens ?? m.cost_per_1k_tokens ?? '—'}
+                      {m.cost_per_1m_tokens ?? '—'}
                     </td>
                     <td className="px-4 py-2 text-right font-mono text-xs">
                       {m.monthly_calls ?? 0}

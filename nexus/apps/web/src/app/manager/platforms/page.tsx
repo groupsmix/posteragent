@@ -20,8 +20,21 @@ export default function ManagerPlatformsPage() {
     const name = prompt('Platform name?')
     if (!name) return
     const slug = name.toLowerCase().replace(/\s+/g, '-')
-    const p = await api.createPlatform({ name, slug })
-    setPlatforms((prev) => [...prev, p])
+    try {
+      const p = await api.createPlatform({ name, slug })
+      setPlatforms((prev) => [...prev, p])
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create platform')
+    }
+  }
+
+  const remove = async (id: string) => {
+    try {
+      await api.deletePlatform(id)
+      setPlatforms((prev) => prev.filter((x) => x.id !== id))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete platform')
+    }
   }
 
   return (
@@ -46,7 +59,7 @@ export default function ManagerPlatformsPage() {
                   <div className="text-sm font-semibold">{p.name}</div>
                   <div className="text-xs text-muted-foreground">{p.slug}</div>
                 </div>
-                <button onClick={() => api.deletePlatform(p.id).then(() => setPlatforms((prev) => prev.filter((x) => x.id !== p.id)))} className="text-muted-foreground hover:text-destructive">
+                <button onClick={() => remove(p.id)} className="text-muted-foreground hover:text-destructive">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </li>

@@ -5,6 +5,7 @@ export const runtime = 'edge'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
+import type { WorkflowStatusResponse, WorkflowStep } from '@nexus/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Loader2, Check, X, Clock, AlertCircle, ChevronRight } from 'lucide-react'
@@ -28,7 +29,7 @@ const STEP_LABELS: Record<string, string> = {
   quality_ceo: '⑮ CEO Review',
 }
 
-function StepItem({ step, index }: { step: any; index: number }) {
+function StepItem({ step, index }: { step: WorkflowStep; index: number }) {
   const icons = {
     waiting: <Clock className="w-5 h-5 text-muted-foreground" />,
     running: <Loader2 className="w-5 h-5 animate-spin text-blue-500" />,
@@ -41,7 +42,7 @@ function StepItem({ step, index }: { step: any; index: number }) {
     <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
       <div className="flex-shrink-0">{icons[step.status as keyof typeof icons] || icons.waiting}</div>
       <div className="flex-1">
-        <p className={`font-medium ${step.status === 'completed' ? 'text-green-600' : step.status === 'failed' ? 'text-red-600' : ''}`}>
+        <p className={`font-medium ${step.status === 'completed' ? 'text-green-600 dark:text-green-400' : step.status === 'failed' ? 'text-red-600 dark:text-red-400' : ''}`}>
           {STEP_LABELS[step.step_name] || step.step_name}
         </p>
         <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
@@ -68,7 +69,7 @@ function StepItem({ step, index }: { step: any; index: number }) {
 export default function WorkflowPage() {
   const params = useParams()
   const router = useRouter()
-  const [workflow, setWorkflow] = useState<any>(null)
+  const [workflow, setWorkflow] = useState<WorkflowStatusResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [polling, setPolling] = useState(true)
 
@@ -126,10 +127,10 @@ export default function WorkflowPage() {
           <h1 className="text-2xl font-bold mb-2">Workflow Progress</h1>
           <div className="flex items-center gap-4">
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              workflow.status === 'completed' ? 'bg-green-100 text-green-700' :
-              workflow.status === 'running' ? 'bg-blue-100 text-blue-700' :
-              workflow.status === 'failed' ? 'bg-red-100 text-red-700' :
-              'bg-gray-100 text-gray-700'
+              workflow.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' :
+              workflow.status === 'running' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
+              workflow.status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' :
+              'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
             }`}>
               {workflow.status.charAt(0).toUpperCase() + workflow.status.slice(1)}
             </span>
@@ -142,13 +143,13 @@ export default function WorkflowPage() {
         </div>
 
         {workflow.error && (
-          <Card className="mb-6 border-red-200 bg-red-50">
+          <Card className="mb-6 border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
                 <div>
-                  <p className="font-medium text-red-700">Error</p>
-                  <p className="text-sm text-red-600">{workflow.error}</p>
+                  <p className="font-medium text-red-700 dark:text-red-300">Error</p>
+                  <p className="text-sm text-red-600 dark:text-red-400">{workflow.error}</p>
                 </div>
               </div>
             </CardContent>
@@ -156,19 +157,19 @@ export default function WorkflowPage() {
         )}
 
         <div className="space-y-3">
-          {workflow.steps?.map((step: any, index: number) => (
+          {workflow.steps?.map((step: WorkflowStep, index: number) => (
             <StepItem key={step.id || index} step={step} index={index} />
           ))}
         </div>
 
         {workflow.status === 'completed' && (
-          <Card className="mt-8 border-green-200 bg-green-50">
+          <Card className="mt-8 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
             <CardContent className="p-6 text-center">
               <Check className="w-12 h-12 text-green-500 mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-green-700 mb-2">Workflow Complete!</h2>
-              <p className="text-green-600 mb-4">Your product is ready for review.</p>
+              <h2 className="text-xl font-bold text-green-700 dark:text-green-300 mb-2">Workflow Complete!</h2>
+              <p className="text-green-600 dark:text-green-400 mb-4">Your product is ready for review.</p>
               <Link href={`/review/${workflow.product_id}`}>
-                <Button className="bg-green-600 hover:bg-green-700">
+                <Button className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600">
                   Review Product
                   <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>

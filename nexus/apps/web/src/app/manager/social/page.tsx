@@ -20,8 +20,21 @@ export default function ManagerSocialPage() {
     const name = prompt('Channel name?')
     if (!name) return
     const slug = name.toLowerCase().replace(/\s+/g, '-')
-    const c = await api.createSocialChannel({ name, slug })
-    setChannels((prev) => [...prev, c])
+    try {
+      const c = await api.createSocialChannel({ name, slug })
+      setChannels((prev) => [...prev, c])
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create channel')
+    }
+  }
+
+  const remove = async (id: string) => {
+    try {
+      await api.deleteSocialChannel(id)
+      setChannels((prev) => prev.filter((x) => x.id !== id))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete channel')
+    }
   }
 
   return (
@@ -46,7 +59,7 @@ export default function ManagerSocialPage() {
                   <div className="text-sm font-semibold">{c.name}</div>
                   <div className="text-xs text-muted-foreground">{c.slug}</div>
                 </div>
-                <button onClick={() => api.deleteSocialChannel(c.id).then(() => setChannels((prev) => prev.filter((x) => x.id !== c.id)))} className="text-muted-foreground hover:text-destructive">
+                <button onClick={() => remove(c.id)} className="text-muted-foreground hover:text-destructive">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </li>
