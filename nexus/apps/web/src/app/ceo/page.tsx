@@ -78,12 +78,17 @@ export default function CeoManagerPage() {
         <div className="mx-auto flex h-[calc(100vh-220px)] max-w-3xl flex-col">
           <div className="flex-1 space-y-4 overflow-y-auto pr-1">
             {turns.map((t, i) => (
-              <div key={i} className={t.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+              <div key={i} className={t.role === 'user' ? 'flex justify-end' : 'flex items-start justify-start gap-2.5'}>
+                {t.role === 'assistant' && (
+                  <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-glow">
+                    <Bot className="h-4 w-4" />
+                  </span>
+                )}
                 <div
                   className={
                     t.role === 'user'
-                      ? 'max-w-[80%] rounded-2xl rounded-br-sm bg-gradient-primary px-4 py-2.5 text-sm text-primary-foreground'
-                      : 'max-w-[85%] rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-3 text-sm'
+                      ? 'max-w-[80%] rounded-2xl rounded-br-sm bg-gradient-primary px-4 py-2.5 text-sm text-primary-foreground shadow-card'
+                      : 'max-w-[85%] rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-3 text-sm shadow-card'
                   }
                 >
                   {t.role === 'user' ? (

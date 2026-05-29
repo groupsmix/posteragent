@@ -49,7 +49,7 @@ export default function BrowserPage() {
           </div>
         )}
 
-        <form onSubmit={run} className="space-y-3 rounded-2xl border border-border bg-card p-4">
+        <form onSubmit={run} className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-card">
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">URL</label>
             <input
@@ -92,7 +92,7 @@ export default function BrowserPage() {
         )}
 
         {result && (
-          <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
+          <div className="space-y-4 rounded-2xl border border-border bg-card p-4 shadow-card">
             <div>
               <div className="text-sm font-semibold">{result.title || result.url}</div>
               <a
