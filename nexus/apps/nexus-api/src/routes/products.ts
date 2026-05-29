@@ -52,15 +52,23 @@ productRoutes.get('/:id/deliverable', async (c) => {
       { name: `${slug}/tags.txt`, data: tags.join('\n') },
     ]
 
-    // Attach the hero image from R2 if one was generated.
-    const asset = await c.env.DB.prepare(
-      `SELECT r2_key, mime_type FROM assets WHERE product_id = ? AND r2_key IS NOT NULL LIMIT 1`
-    ).bind(productId).first<any>()
-    if (asset?.r2_key) {
-      const obj = await c.env.ASSETS.get(asset.r2_key)
+    // Attach the hero image from R2 if one was generated. The key comes from
+    // product.image_url (/api/assets/r2/<key>) or, as a fallback, the assets table.
+    let r2Key: string | null = null
+    if (typeof product.image_url === 'string' && product.image_url.includes('/assets/r2/')) {
+      r2Key = product.image_url.split('/assets/r2/')[1] || null
+    }
+    if (!r2Key) {
+      const asset = await c.env.DB.prepare(
+        `SELECT r2_key FROM assets WHERE product_id = ? AND r2_key IS NOT NULL LIMIT 1`
+      ).bind(productId).first<any>()
+      r2Key = asset?.r2_key ?? null
+    }
+    if (r2Key) {
+      const obj = await c.env.ASSETS.get(r2Key)
       if (obj) {
         const bytes = new Uint8Array(await obj.arrayBuffer())
-        const ext = (asset.mime_type || '').includes('png') ? 'png' : 'jpg'
+        const ext = r2Key.endsWith('.png') ? 'png' : 'jpg'
         files.push({ name: `${slug}/hero-image.${ext}`, data: bytes })
       }
     }
