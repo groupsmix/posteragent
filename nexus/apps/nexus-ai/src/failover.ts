@@ -217,10 +217,17 @@ async function tryUniversalProviders(
   if (env.AI) {
     try {
       tried.push('cloudflare-workers-ai-llama')
-      const out = (await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 4096,
-      })) as { response?: string }
+      // env.AI.run doesn't take an AbortSignal, so race it against a hard
+      // deadline — otherwise a hung binding stalls the whole product run.
+      const out = (await Promise.race([
+        env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 4096,
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('cloudflare-workers-ai timed out')), timeoutMs),
+        ),
+      ])) as { response?: string }
       if (out?.response && out.response.trim()) {
         console.log('[NEXUS-AI] SUCCESS cloudflare-workers-ai-llama (universal fallback)')
         return { output: out.response, model_used: 'cloudflare-workers-ai-llama', models_tried: tried, tokens_used: 0, cost_usd: 0 }

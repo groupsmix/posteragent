@@ -195,12 +195,13 @@ export async function runMarketing(
     const link = product.published_url ? `\nLink: ${product.published_url}` : ''
     for (const ch of channels) {
       const prompt = [
-        `You are a social media marketer. Write ONE ready-to-post ${ch.name} promo for this digital product.`,
+        `Write ONE ready-to-post ${ch.name} promo for this digital product, the way a real person who actually uses it would post — not an ad.`,
         `Product: ${product.name}.`,
         product.description ? `What it is: ${product.description.slice(0, 600)}` : '',
-        `Channel tone: ${ch.tone || 'engaging and natural'}.`,
-        `Hard limit: ${ch.caption_max_chars || 280} characters. Include up to ${ch.hashtag_count || 3} relevant hashtags.`,
-        `Hook the reader, give one concrete benefit, and end with a clear call to action.${link}`,
+        `Channel tone: ${ch.tone || 'natural, a little informal'}.`,
+        `Hard limit: ${ch.caption_max_chars || 280} characters. Include up to ${ch.hashtag_count || 3} genuinely relevant hashtags (no hashtag soup).`,
+        `Open with a hook in the first line, give ONE concrete benefit or example, end with a clear, low-pressure call to action.${link}`,
+        `Sound human: vary sentence length, be specific. NEVER use these AI clichés: in today's, unlock, unleash, elevate, seamless, game-changer, revolutionize, dive in, supercharge, look no further, take it to the next level.`,
         `Output ONLY the post text — no quotes, no preamble, no explanation.`,
       ].filter(Boolean).join('\n')
 
