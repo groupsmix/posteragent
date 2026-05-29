@@ -58,13 +58,13 @@ export default function ProductsPage() {
             {products.map((p) => (
               <li
                 key={p.id}
-                className="rounded-xl border border-border bg-card p-4 flex items-center justify-between"
+                className="rounded-xl border border-border bg-card p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">{p.name || 'Untitled'}</div>
-                  <div className="text-xs text-muted-foreground">{p.niche ?? '—'}</div>
+                  <div className="text-xs text-muted-foreground truncate">{p.niche ?? '—'}</div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
                   {typeof p.ai_score === 'number' && (
                     <span className="text-xs text-muted-foreground">{p.ai_score.toFixed(1)}/10</span>
                   )}
