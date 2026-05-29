@@ -41,7 +41,7 @@ function jsonFromModel(raw: string): any {
   }
 }
 
-async function callAI(env: Env, prompt: string): Promise<string> {
+async function callAI(env: Env, prompt: string, outputFormat: 'json' | 'text' = 'json'): Promise<string> {
   let lastErr: unknown = null
   // Retry transient free-tier hiccups so the CEO rarely shows an engine error.
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -49,7 +49,7 @@ async function callAI(env: Env, prompt: string): Promise<string> {
       const req = new Request('https://nexus-ai/task', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ taskType: 'manager_plan', prompt, outputFormat: 'json', timeoutMs: 60000 }),
+        body: JSON.stringify({ taskType: 'manager_plan', prompt, outputFormat, timeoutMs: 60000 }),
       })
       const res = await env.AI_WORKER.fetch(req)
       if (!res.ok) throw new Error(`AI worker failed: ${res.status}`)
@@ -61,6 +61,41 @@ async function callAI(env: Env, prompt: string): Promise<string> {
     }
   }
   throw lastErr instanceof Error ? lastErr : new Error('ai_unreachable')
+}
+
+// Final pass: turn whatever the CEO gathered/did this turn into a warm,
+// well-formatted written answer. This runs when the model called tools but
+// never produced a {"reply"}, so the owner always gets a real message —
+// never a bare "Done." status line.
+async function composeReply(
+  env: Env,
+  opts: { message: string; convo: string; overview: string; scratch: string[] },
+): Promise<string> {
+  const work = opts.scratch.length ? opts.scratch.join('\n') : '(no actions were needed)'
+  const prompt = `You are the CEO Manager of NEXUS, an AI digital-product engine, replying to the owner. Be warm, concrete and concise.
+
+Write your reply in clean Markdown so it's easy to read:
+- Open with one short sentence answering directly.
+- Use **bold** for the key numbers/names.
+- Use a numbered list for step-by-step plans, or a bullet list for items.
+- Use a short "## Heading" only when it genuinely helps; keep it tight.
+- Do NOT output JSON, do NOT mention "tools", and do NOT show raw internal IDs unless the owner asked for them.
+
+LIVE SNAPSHOT:
+${opts.overview}
+
+Conversation so far:
+${opts.convo || '(new conversation)'}
+
+The owner just said:
+"${opts.message}"
+
+What you did / learned this turn:
+${work}
+
+Now write your final reply to the owner:`
+  const out = await callAI(env, prompt, 'text')
+  return (out || '').trim()
 }
 
 async function getCatalog(env: Env) {
@@ -269,8 +304,9 @@ Respond with ONLY one JSON object (a tool call or a final {"reply"}).`
       // and stops the model from looping on a read it already has.
       const sig = `${tool}:${JSON.stringify(args)}`
       if (executed.has(sig)) {
-        scratch.push(`(already ran ${tool} — you have the result above; now give your final {"reply"})`)
-        continue
+        // The model is repeating a tool it already ran — it has nothing new to
+        // do, so stop looping and synthesize the final answer below.
+        break
       }
       executed.add(sig)
 
@@ -285,9 +321,15 @@ Respond with ONLY one JSON object (a tool call or a final {"reply"}).`
         if (where.length) sql += ' WHERE ' + where.join(' AND ')
         sql += ' ORDER BY created_at DESC LIMIT 20'
         const rows = await c.env.DB.prepare(sql).bind(...binds).all<any>()
-        const summary = (rows.results || []).map((r) => `"${r.name || 'Untitled'}" [${(r.id as string).slice(0, 8)}] ${r.status}${typeof r.ai_score === 'number' ? ` (${r.ai_score})` : ''}`).join('; ') || 'no matching products'
-        steps.push({ tool, args, ok: true, summary })
-        scratch.push(`list_products → ${summary}`)
+        const found = rows.results || []
+        // Full detail (with ids) goes to the model's scratchpad; the action
+        // card shown to the owner stays short and readable.
+        const detail = found.map((r) => `"${r.name || 'Untitled'}" [${(r.id as string).slice(0, 8)}] ${r.status}${typeof r.ai_score === 'number' ? ` (${r.ai_score})` : ''}`).join('; ') || 'no matching products'
+        const cardSummary = found.length
+          ? `Found ${found.length} product${found.length > 1 ? 's' : ''}: ${found.slice(0, 5).map((r) => r.name || 'Untitled').join(', ')}${found.length > 5 ? `, +${found.length - 5} more` : ''}.`
+          : 'No matching products.'
+        steps.push({ tool, args, ok: true, summary: cardSummary })
+        scratch.push(`list_products → ${detail}`)
         continue
       }
 
@@ -358,10 +400,30 @@ Respond with ONLY one JSON object (a tool call or a final {"reply"}).`
     })
   }
 
+  // The model ran tools but never wrote a final {"reply"} — compose a proper,
+  // formatted written answer from what it did so the owner never sees a bare
+  // "Done." status line.
+  if (!reply) {
+    try {
+      reply = await composeReply(c.env, { message, convo, overview, scratch })
+    } catch {
+      reply = ''
+    }
+  }
   if (!reply) {
     reply = steps.length
       ? `Done. ${steps.filter((s) => s.ok).length}/${steps.length} action(s) completed.`
       : 'Understood.'
   }
-  return c.json({ reply, steps })
+
+  // Collapse duplicate action cards (e.g. the model ran list_products a few
+  // times) so the owner sees a clean, de-duped list of what happened.
+  const seenCards = new Set<string>()
+  const cleanSteps = steps.filter((s) => {
+    const k = `${s.tool}:${s.summary}`
+    if (seenCards.has(k)) return false
+    seenCards.add(k)
+    return true
+  })
+  return c.json({ reply, steps: cleanSteps })
 })
