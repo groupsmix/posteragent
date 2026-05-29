@@ -6,8 +6,13 @@
 // Providers are tried in order of cost/availability; returns null when no
 // image provider is configured.
 
+interface WorkersAI {
+  run(model: string, inputs: Record<string, unknown>): Promise<unknown>
+}
+
 interface ImageEnv {
   SECRETS?: { get(key: string): Promise<string | null> }
+  AI?: WorkersAI
   [key: string]: unknown
 }
 
@@ -41,6 +46,22 @@ async function urlToBase64(url: string): Promise<{ base64: string; contentType: 
 }
 
 export async function generateImage(prompt: string, env: ImageEnv): Promise<GeneratedImage | null> {
+  // 0. Cloudflare Workers AI (FLUX schnell) — free-tier, no external key needed.
+  if (env.AI) {
+    try {
+      const out = (await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
+        prompt,
+        steps: 4,
+      })) as { image?: string }
+      if (out?.image) {
+        // Workers AI returns a base64-encoded JPEG.
+        return { base64: out.image, contentType: 'image/jpeg', provider: 'cloudflare-workers-ai-flux' }
+      }
+    } catch {
+      /* try next */
+    }
+  }
+
   // 1. fal.ai FLUX — fast and cheap.
   const falKey = (await getSecret(env, 'FAL_KEY')) || (await getSecret(env, 'FAL_API_KEY'))
   if (falKey) {
