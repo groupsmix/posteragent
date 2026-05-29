@@ -18,6 +18,8 @@ import { winnerRoutes } from './routes/winners'
 import { graveyardRoutes } from './routes/graveyard'
 import { historyRoutes } from './routes/history'
 import { settingsRoutes } from './routes/settings'
+import { keyRoutes } from './routes/keys'
+import { managerRoutes } from './routes/manager'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -68,6 +70,8 @@ api.route('/winners', winnerRoutes)
 api.route('/graveyard', graveyardRoutes)
 api.route('/history', historyRoutes)
 api.route('/settings', settingsRoutes)
+api.route('/keys', keyRoutes)
+api.route('/manager', managerRoutes)
 
 // Mount API routes under /api
 app.route('/api', api)

@@ -47,8 +47,18 @@ async function getSecret(env: Env, key: string): Promise<string | null> {
       /* fall through */
     }
   }
-  const v = (env as unknown as Record<string, unknown>)[key]
-  return typeof v === 'string' && v.length > 0 ? v : null
+  const plain = (env as unknown as Record<string, unknown>)[key]
+  if (typeof plain === 'string' && plain.length > 0) return plain
+  // Keys added from the dashboard are stored in KV as secret:<KEY>.
+  if (env.CONFIG) {
+    try {
+      const v = await env.CONFIG.get(`secret:${key}`)
+      if (v) return v
+    } catch {
+      /* fall through */
+    }
+  }
+  return null
 }
 
 function notConfigured(envVar: string, what: string): PublishOutcome {

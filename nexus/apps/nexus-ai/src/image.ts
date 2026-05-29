@@ -12,6 +12,7 @@ interface WorkersAI {
 
 interface ImageEnv {
   SECRETS?: { get(key: string): Promise<string | null> }
+  CONFIG?: { get(key: string): Promise<string | null> }
   AI?: WorkersAI
   [key: string]: unknown
 }
@@ -31,8 +32,17 @@ async function getSecret(env: ImageEnv, key: string): Promise<string | null> {
       /* fall through */
     }
   }
-  const v = (env as Record<string, unknown>)[key]
-  return typeof v === 'string' && v.length > 0 ? v : null
+  const plain = (env as Record<string, unknown>)[key]
+  if (typeof plain === 'string' && plain.length > 0) return plain
+  if (env.CONFIG) {
+    try {
+      const v = await env.CONFIG.get(`secret:${key}`)
+      if (v) return v
+    } catch {
+      /* fall through */
+    }
+  }
+  return null
 }
 
 async function urlToBase64(url: string): Promise<{ base64: string; contentType: string }> {

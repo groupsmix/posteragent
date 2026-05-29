@@ -9,6 +9,39 @@ import type {
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787'
 
+export interface ApiKeyInfo {
+  key: string
+  label: string
+  group: 'AI' | 'Publishing' | 'Social'
+  help: string
+  worker: 'ai' | 'api'
+  configured: boolean
+  masked: string | null
+}
+
+export interface ManagerMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface ManagerAction {
+  type: 'create_product' | 'note'
+  domain_slug?: string
+  category_slug?: string
+  product_name?: string
+  niche?: string
+  description?: string
+  product_id?: string
+  workflow_id?: string
+  status?: 'started' | 'failed'
+  detail?: string
+}
+
+export interface ManagerReply {
+  reply: string
+  actions: ManagerAction[]
+}
+
 // Resolve an API-relative asset path (e.g. /api/assets/r2/...) to an absolute
 // URL the browser can load. Absolute URLs are returned unchanged.
 export function assetUrl(path?: string | null): string | null {
@@ -121,6 +154,21 @@ export const api = {
   // Settings
   getSettings: () => apiFetch<any>('/api/settings'),
   updateSettings: (data: any) => apiFetch<any>('/api/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+
+  // API keys (dashboard-managed provider credentials)
+  getKeys: () => apiFetch<{ keys: ApiKeyInfo[] }>('/api/keys'),
+  saveKeys: (keys: Record<string, string>) =>
+    apiFetch<{ ok: boolean; written: number; ai_forwarded: boolean }>('/api/keys', {
+      method: 'POST',
+      body: JSON.stringify({ keys }),
+    }),
+
+  // CEO Manager (chat orchestrator)
+  managerChat: (message: string, history: ManagerMessage[]) =>
+    apiFetch<ManagerReply>('/api/manager/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, history }),
+    }),
 
   // Graveyard
   getGraveyard: () => apiFetch<{ products: Product[] }>('/api/graveyard'),

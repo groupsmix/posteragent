@@ -90,6 +90,27 @@ app.get('/health', (c) => {
 })
 
 // ============================================================
+// Secrets endpoint (dashboard-managed API keys, stored in KV)
+// ============================================================
+// Called by nexus-api to persist provider keys added from the dashboard.
+app.post('/secrets', async (c) => {
+  const body = await c.req.json<{ keys?: Record<string, string> }>()
+  const keys = body.keys || {}
+  let written = 0
+  for (const [k, v] of Object.entries(keys)) {
+    if (typeof v !== 'string') continue
+    const key = `secret:${k}`
+    if (v.length === 0) {
+      await c.env.CONFIG.delete(key)
+    } else {
+      await c.env.CONFIG.put(key, v)
+      written++
+    }
+  }
+  return c.json({ ok: true, written })
+})
+
+// ============================================================
 // Model Status Endpoint
 // ============================================================
 

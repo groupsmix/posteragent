@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutGrid, Workflow, ShieldCheck, Package, Skull, Send, Radar,
   Trophy, Settings as SettingsIcon, Cpu, Globe2, Megaphone, FileCode, History,
+  Bot, KeyRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -13,6 +14,7 @@ const sections: { title: string; items: { to: string; label: string; icon: React
     title: 'Operate',
     items: [
       { to: '/', label: 'Domains', icon: LayoutGrid },
+      { to: '/ceo', label: 'CEO Manager', icon: Bot },
       { to: '/products', label: 'Products', icon: Package },
       { to: '/review', label: 'Review queue', icon: ShieldCheck },
       { to: '/publish', label: 'Publish center', icon: Send },
@@ -35,6 +37,7 @@ const sections: { title: string; items: { to: string; label: string; icon: React
       { to: '/manager/social', label: 'Social channels', icon: Megaphone },
       { to: '/manager/prompts', label: 'Prompts', icon: FileCode },
       { to: '/manager/ai', label: 'AI models', icon: Cpu },
+      { to: '/settings/keys', label: 'API keys', icon: KeyRound },
       { to: '/settings', label: 'Settings', icon: SettingsIcon },
     ],
   },
