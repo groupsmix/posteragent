@@ -7,7 +7,7 @@ import {
   Package, ShieldCheck,
   Settings as SettingsIcon, Globe2, Megaphone, FileCode, History,
   Bot, KeyRound, CalendarClock, Rocket, LayoutDashboard, ChevronDown, DollarSign,
-  Menu, X, Radar, Cpu, LayoutGrid, Workflow, Brain, Skull, Sunrise,
+  Menu, X, Radar, Cpu, LayoutGrid, Workflow, Brain, Skull, Sunrise, Shirt,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -33,6 +33,7 @@ const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
       { to: '/intelligence', label: 'Intelligence', icon: Radar },
       { to: '/marketing', label: 'Marketing', icon: Megaphone },
       { to: '/autopilot', label: 'Autopilot', icon: Rocket },
+      { to: '/pod', label: 'Print on Demand', icon: Shirt },
       { to: '/graveyard', label: 'Graveyard', icon: Skull },
     ],
   },
