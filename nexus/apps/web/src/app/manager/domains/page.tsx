@@ -25,16 +25,33 @@ export default function ManagerDomainsPage() {
     const name = prompt('Domain name?')
     if (!name) return
     const slug = name.toLowerCase().replace(/\s+/g, '-')
-    const d = await api.createDomain({ name, slug })
-    setDomains((prev) => [...prev, d])
+    try {
+      const d = await api.createDomain({ name, slug })
+      setDomains((prev) => [...prev, d])
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create domain')
+    }
   }
 
   const addCategory = async (domainId: string) => {
     const name = prompt('Category name?')
     if (!name) return
     const slug = name.toLowerCase().replace(/\s+/g, '-')
-    const c = await api.createCategory(domainId, { name, slug })
-    setCategoriesByDomain((prev) => ({ ...prev, [domainId]: [...(prev[domainId] ?? []), c] }))
+    try {
+      const c = await api.createCategory(domainId, { name, slug })
+      setCategoriesByDomain((prev) => ({ ...prev, [domainId]: [...(prev[domainId] ?? []), c] }))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create category')
+    }
+  }
+
+  const deleteDomain = async (id: string) => {
+    try {
+      await api.deleteDomain(id)
+      setDomains((prev) => prev.filter((x) => x.id !== id))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete domain')
+    }
   }
 
   return (
@@ -74,7 +91,7 @@ export default function ManagerDomainsPage() {
                       + category
                     </button>
                     <button
-                      onClick={() => api.deleteDomain(d.id).then(() => setDomains((prev) => prev.filter((x) => x.id !== d.id)))}
+                      onClick={() => deleteDomain(d.id)}
                       className="text-xs rounded-md border border-border px-2.5 py-1 hover:border-destructive/40 hover:text-destructive"
                     >
                       <Trash2 className="h-3 w-3" />

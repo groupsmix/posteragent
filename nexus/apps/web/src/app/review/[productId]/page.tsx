@@ -52,22 +52,40 @@ export default function ReviewPage() {
   }
 
   const approve = async () => {
-    await api.approveProduct(p.id)
-    router.push('/products')
+    try {
+      await api.approveProduct(p.id)
+      router.push('/products')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to approve product')
+    }
   }
   const reject = async () => {
-    await api.rejectProduct(p.id, feedback || 'No reason given')
-    router.push('/graveyard')
+    try {
+      await api.rejectProduct(p.id, feedback || 'No reason given')
+      router.push('/graveyard')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to reject product')
+    }
   }
   const updateField = async (patch: Partial<ProductDetail>) => {
+    const prev = { ...p }
     setP({ ...p, ...patch })
-    await api.updateProductSection(p.id, patch)
-    setEditing(null)
+    try {
+      await api.updateProductSection(p.id, patch)
+      setEditing(null)
+    } catch (err) {
+      setP(prev)
+      alert(err instanceof Error ? err.message : 'Failed to save changes')
+    }
   }
   const del = async () => {
     if (!confirm(`Delete "${p.name || 'this product'}"? This removes it and its files for good.`)) return
-    await api.deleteProduct(p.id)
-    router.push('/products')
+    try {
+      await api.deleteProduct(p.id)
+      router.push('/products')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete product')
+    }
   }
   const genDeliverable = async (format?: string) => {
     setGenning(true)

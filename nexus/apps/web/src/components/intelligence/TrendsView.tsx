@@ -19,13 +19,21 @@ export function TrendsView() {
   }, [])
 
   const handleDismiss = async (id: string) => {
-    await api.dismissTrend(id)
-    setTrends(trends.filter((t) => t.id !== id))
+    try {
+      await api.dismissTrend(id)
+      setTrends(trends.filter((t) => t.id !== id))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to dismiss trend')
+    }
   }
 
   const handleStartWorkflow = async (id: string) => {
-    const result = await api.startTrendWorkflow(id)
-    window.location.href = `/workflow/${result.workflow_id}`
+    try {
+      const result = await api.startTrendWorkflow(id)
+      window.location.href = `/workflow/${result.workflow_id}`
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to start workflow from trend')
+    }
   }
 
   if (loading) {
