@@ -1,6 +1,6 @@
 import type { Env } from '../env'
 import type { AIRunTaskResponse } from '@nexus/types'
-import { pickRecipe } from './recipes'
+import { pickRecipe, getRecipe } from './recipes'
 import { buildDeliverableHtml, renderPdf, type Deliverable } from './pdf'
 
 // Same human-voice directive used by the workflow writers, kept local so the
@@ -108,7 +108,7 @@ function looksGeneric(d: Deliverable, format: string): boolean {
 export async function generateDeliverableForProduct(
   env: Env,
   productId: string,
-  opts: { force?: boolean } = {},
+  opts: { force?: boolean; format?: string } = {},
 ): Promise<{ url: string; format: string } | null> {
   if (!env.BROWSER) return null // PDF needs Browser Rendering.
 
@@ -132,7 +132,8 @@ export async function generateDeliverableForProduct(
     brief = {}
   }
   const niche = product.niche || brief.niche || product.name || 'general'
-  const recipe = pickRecipe(product.domain_slug || '', product.category_slug || '', niche)
+  const recipe =
+    getRecipe(opts.format) ?? pickRecipe(product.domain_slug || '', product.category_slug || '', niche)
   const psy = brief.psychology || {}
   const context = (product.description || '').slice(0, 2000)
   const tone = psy.voice?.tone || 'confident, plain-spoken expert'

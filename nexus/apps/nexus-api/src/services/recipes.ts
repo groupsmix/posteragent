@@ -45,6 +45,18 @@ const RECIPES: Record<string, Recipe> = {
   },
 }
 
+// The format keys a user can force from the dashboard, with friendly labels.
+export const RECIPE_OPTIONS: { key: string; label: string }[] = Object.entries(RECIPES).map(
+  ([key, r]) => ({ key, label: r.format }),
+)
+
+// Look up a recipe by its key (e.g. 'prompt_pack'). Returns null for unknown
+// keys so callers can fall back to keyword-matching.
+export function getRecipe(key: string | null | undefined): Recipe | null {
+  if (!key) return null
+  return RECIPES[key] ?? null
+}
+
 // Pick a recipe from the domain/category/niche. Keyword-matched with a
 // sensible default so every product gets a concrete, usable format.
 export function pickRecipe(domainSlug: string, categorySlug: string, niche: string): Recipe {
