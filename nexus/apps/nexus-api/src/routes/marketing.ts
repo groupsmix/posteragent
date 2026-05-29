@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
 import { postToSocial, getSecret } from '../services/publishers'
+import { callAISimple, getSetting, setSetting } from '../services/shared'
 
 // ============================================================
 // Marketing team — an autonomous promotion crew. When ON, the cron picks
@@ -24,20 +25,6 @@ async function ensureTable(env: Env): Promise<void> {
        id TEXT PRIMARY KEY, product_id TEXT, channel TEXT, content TEXT,
        status TEXT NOT NULL, note TEXT, created_at TEXT NOT NULL)`,
   ).run().catch(() => void 0)
-}
-
-async function getSetting(env: Env, key: string): Promise<string | null> {
-  const row = await env.DB.prepare('SELECT value FROM settings WHERE key = ? LIMIT 1')
-    .bind(key).first<{ value: string }>().catch(() => null)
-  return row?.value ?? null
-}
-
-async function setSetting(env: Env, key: string, value: string): Promise<void> {
-  const now = new Date().toISOString()
-  await env.DB.prepare(
-    `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
-     ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?`,
-  ).bind(key, value, now, value, now).run()
 }
 
 async function logMarketing(
@@ -114,14 +101,7 @@ marketingRoutes.post('/run', async (c) => {
 
 async function callAI(env: Env, prompt: string, taskType = 'social_adaptation'): Promise<string> {
   try {
-    const res = await env.AI_WORKER.fetch(new Request('https://nexus-ai/task', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ taskType, prompt, outputFormat: 'text', timeoutMs: 60000 }),
-    }))
-    if (!res.ok) return ''
-    const data = (await res.json()) as { output?: string }
-    return (data.output ?? '').trim()
+    return (await callAISimple(env, prompt, { taskType, outputFormat: 'text' })).trim()
   } catch { return '' }
 }
 

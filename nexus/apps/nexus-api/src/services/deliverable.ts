@@ -1,53 +1,14 @@
 import type { Env } from '../env'
-import type { AIRunTaskResponse } from '@nexus/types'
 import { pickRecipe, getRecipe } from './recipes'
 import { buildDeliverableHtml, renderPdf, type Deliverable } from './pdf'
+import { callAISimple, safeJson } from './shared'
 
 // Same human-voice directive used by the workflow writers, kept local so the
 // deliverable reads like the rest of the product.
 const HUMAN_VOICE = `Write like a sharp human expert talking to one person. Be specific and concrete. Never use clichés ("in today's fast-paced world", "unlock", "game-changer", "dive in", "elevate", "seamless", "robust") or AI throat-clearing. Vary sentence length. No filler.`
 
-function safeJson<T = unknown>(raw: string): T | null {
-  try {
-    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
-    return JSON.parse(cleaned) as T
-  } catch {
-    const start = raw.indexOf('{')
-    const end = raw.lastIndexOf('}')
-    if (start >= 0 && end > start) {
-      try {
-        return JSON.parse(raw.slice(start, end + 1)) as T
-      } catch {
-        return null
-      }
-    }
-    return null
-  }
-}
-
 async function callAI(env: Env, prompt: string): Promise<string> {
-  const ctl = new AbortController()
-  const fetchP = (async () => {
-    const res = await env.AI_WORKER.fetch(
-      new Request('https://nexus-ai/task', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ taskType: 'generate_long_form', prompt, outputFormat: 'json', timeoutMs: 60000 }),
-        signal: ctl.signal,
-      }),
-    )
-    if (!res.ok) throw new Error(`AI worker failed: ${res.status} ${await res.text().catch(() => '')}`)
-    return ((await res.json()) as AIRunTaskResponse).output
-  })()
-  return Promise.race([
-    fetchP,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => {
-        ctl.abort()
-        reject(new Error('__deadline__'))
-      }, 70000),
-    ),
-  ])
+  return callAISimple(env, prompt, { taskType: 'generate_long_form', outputFormat: 'json', timeoutMs: 120000 })
 }
 
 interface ProductRow {

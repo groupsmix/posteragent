@@ -4,6 +4,8 @@ import { ProductWorkflow } from '../services/workflow-engine'
 import { buildListingPayload } from './publish'
 import { publishToPlatform } from '../services/publishers'
 import { browse } from '../services/browser'
+import { callAISimple } from '../services/shared'
+import { safeJson } from '../services/shared'
 
 // ============================================================
 // CEO Agent — a conversational, tool-using manager with full control.
@@ -30,39 +32,10 @@ interface AgentStep {
 
 const MAX_TURNS = 6
 
-function jsonFromModel(raw: string): any {
-  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
-  const candidate = fence ? fence[1] : raw
-  const start = candidate.indexOf('{')
-  const end = candidate.lastIndexOf('}')
-  if (start === -1 || end === -1 || end < start) return null
-  try {
-    return JSON.parse(candidate.slice(start, end + 1))
-  } catch {
-    return null
-  }
-}
+const jsonFromModel = safeJson
 
 async function callAI(env: Env, prompt: string, outputFormat: 'json' | 'text' = 'json'): Promise<string> {
-  let lastErr: unknown = null
-  // Retry transient free-tier hiccups so the CEO rarely shows an engine error.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const req = new Request('https://nexus-ai/task', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ taskType: 'manager_plan', prompt, outputFormat, timeoutMs: 60000 }),
-      })
-      const res = await env.AI_WORKER.fetch(req)
-      if (!res.ok) throw new Error(`AI worker failed: ${res.status}`)
-      const data = (await res.json()) as { output?: string }
-      return data.output ?? ''
-    } catch (err) {
-      lastErr = err
-      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)))
-    }
-  }
-  throw lastErr instanceof Error ? lastErr : new Error('ai_unreachable')
+  return callAISimple(env, prompt, { taskType: 'manager_plan', outputFormat })
 }
 
 // Final pass: turn whatever the CEO gathered/did this turn into a warm,
