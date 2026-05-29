@@ -1,11 +1,15 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
+import { sweepStaleRuns } from '../services/sweep'
 
 export const historyRoutes = new Hono<{ Bindings: Env }>()
 
 // GET /history - List workflow run history
 historyRoutes.get('/', async (c) => {
   try {
+    // Auto-recover any run stuck 'running' (evicted worker) before listing,
+    // so the health view never shows a permanently-spinning run.
+    c.executionCtx.waitUntil(sweepStaleRuns(c.env))
     const productId = c.req.query('product_id')
     const status = c.req.query('status')
     const limit = parseInt(c.req.query('limit') || '50')

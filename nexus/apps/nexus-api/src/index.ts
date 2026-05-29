@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { Env } from './env'
+import { sweepStaleRuns } from './services/sweep'
 
 // Route imports
 import { workflowRoutes } from './routes/workflow'
@@ -129,6 +130,7 @@ export default {
   fetch: app.fetch,
   scheduled: async (_controller: ScheduledController, env: Env, ctx: ExecutionContext) => {
     console.log('[cron] Scheduled tasks triggered')
+    ctx.waitUntil(sweepStaleRuns(env))
     ctx.waitUntil(runTrendRadar(env))
     ctx.waitUntil(runDueSchedules(env, ctx))
     ctx.waitUntil(runAutopilot(env, ctx))

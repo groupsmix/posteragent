@@ -59,10 +59,12 @@ export async function generateImage(prompt: string, env: ImageEnv): Promise<Gene
   // 0. Cloudflare Workers AI (FLUX schnell) — free-tier, no external key needed.
   if (env.AI) {
     try {
-      const out = (await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
-        prompt,
-        steps: 4,
-      })) as { image?: string }
+      // env.AI.run has no AbortSignal; race it so a slow/hung image gen can't
+      // block the workflow from finalizing.
+      const out = (await Promise.race([
+        env.AI.run('@cf/black-forest-labs/flux-1-schnell', { prompt, steps: 4 }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('flux timed out')), 45000)),
+      ])) as { image?: string }
       if (out?.image) {
         // Workers AI returns a base64-encoded JPEG.
         return { base64: out.image, contentType: 'image/jpeg', provider: 'cloudflare-workers-ai-flux' }

@@ -19,6 +19,8 @@ interface StepDef {
   outputFormat: 'text' | 'json'
   buildPrompt: (ctx: WorkflowContext) => string
   apply: (ctx: WorkflowContext, raw: string) => void
+  // Optional: skip the step (no AI call) when it has nothing to do.
+  skip?: (ctx: WorkflowContext) => boolean
 }
 
 interface WorkflowContext {
@@ -32,6 +34,35 @@ interface WorkflowContext {
 }
 
 // ------------------------------------------------------------
+// Shared quality directives — injected into the writing steps so
+// the output is specific and human, not generic AI filler.
+// ------------------------------------------------------------
+
+// Phrases that scream "written by AI" — banned outright.
+const BANNED_PHRASES = [
+  'in today\'s fast-paced world', 'in the digital age', 'in this day and age',
+  'unlock', 'unleash', 'elevate', 'embark', 'embark on a journey', 'dive in',
+  'delve', 'navigate the', 'in conclusion', 'in summary', 'last but not least',
+  'game-changer', 'game changer', 'revolutionize', 'revolutionary', 'cutting-edge',
+  'seamless', 'seamlessly', 'robust', 'leverage', 'harness', 'tapestry',
+  'realm', 'landscape of', 'when it comes to', 'at the end of the day',
+  'it is important to note', 'it\'s worth noting', 'rest assured',
+  'look no further', 'whether you\'re a', 'take your ... to the next level',
+  'as an ai', 'i cannot', 'supercharge', 'turbocharge', 'a myriad of',
+  'plethora', 'ever-evolving', 'ever-changing', 'fast-paced', 'bustling',
+]
+
+// Reusable rules for any prose-writing step.
+const HUMAN_VOICE = `WRITE LIKE A SHARP HUMAN EXPERT, NOT AN AI:
+- Be specific. Use concrete examples, real numbers, named tools/situations — never vague generalities.
+- Vary sentence length. Mix short punchy lines with longer ones. Read it aloud in your head; if it sounds robotic, rewrite it.
+- Active voice. Talk directly to the reader ("you"). No corporate hedging.
+- Earn every sentence. Cut filler, throat-clearing intros, and summaries that just restate.
+- No clichés or hype. NEVER use these phrases: ${BANNED_PHRASES.join('; ')}.
+- Don't open with "In today's..." or any scene-setting platitude — start with the most useful thing immediately.
+- Sound like one knowledgeable person wrote it on a good day: confident, plain, a little opinionated.`
+
+// ------------------------------------------------------------
 // The 15 canonical steps (NEXUS-ARCHITECTURE-V4 §9)
 // ------------------------------------------------------------
 
@@ -41,7 +72,9 @@ const STEPS: StepDef[] = [
     taskType: 'research_market',
     outputFormat: 'json',
     buildPrompt: (ctx) =>
-      `You are a market researcher. Return JSON with fields {demand_signal, top_competitors:[{name,price}], price_range:{low,high,avg}, hooks:[string]}. Domain: ${ctx.domainSlug}. Category: ${ctx.categorySlug}. Niche: ${ctx.userInput.niche ?? 'general'}. Seed keywords: ${ctx.userInput.keywords ?? ''}.`,
+      `You are a sharp market researcher who knows this exact niche. Be concrete — name real-style competitor products and realistic prices, not placeholders.
+Niche: "${ctx.userInput.niche ?? 'general'}" (${ctx.domainSlug} / ${ctx.categorySlug}). Seed keywords: ${ctx.userInput.keywords ?? '—'}.
+Return ONLY JSON: {demand_signal:string (one specific sentence on who buys this and why now), top_competitors:[{name,price}] (3-5, plausible real names + prices), price_range:{low,high,avg} (numbers), hooks:[string] (4 specific angles a buyer would actually click — no generic "best ever" lines)}.`,
     apply: (ctx, raw) => {
       ctx.data.market = safeJson(raw)
     },
@@ -51,7 +84,8 @@ const STEPS: StepDef[] = [
     taskType: 'research_psychology',
     outputFormat: 'json',
     buildPrompt: (ctx) =>
-      `Analyze the buyer psychology for a ${ctx.domainSlug}/${ctx.categorySlug} product in the niche "${ctx.userInput.niche ?? 'general'}". Return JSON {pains:[string], desires:[string], emotional_triggers:[string], voice:{tone,style}}.`,
+      `Profile the real buyer of "${ctx.userInput.niche ?? 'general'}" (${ctx.domainSlug}/${ctx.categorySlug}). Be specific to THIS buyer — concrete frustrations and moments, not generic "saves time / easy to use".
+Return ONLY JSON {pains:[string] (4, specific situations), desires:[string] (4, concrete outcomes), emotional_triggers:[string] (3), voice:{tone:string, style:string} (how to talk to them)}.`,
     apply: (ctx, raw) => {
       ctx.data.psychology = safeJson(raw)
     },
@@ -71,7 +105,12 @@ const STEPS: StepDef[] = [
     taskType: 'generate_long_form',
     outputFormat: 'text',
     buildPrompt: (ctx) =>
-      `Write the main product content (800-1400 words) for a ${ctx.domainSlug} ${ctx.categorySlug} in the niche "${ctx.userInput.niche ?? 'general'}". Tone: ${ctx.data.psychology?.voice?.tone ?? 'confident, helpful'}. Address the pains ${JSON.stringify(ctx.data.psychology?.pains ?? [])}. Include the long-tail keywords ${JSON.stringify(ctx.data.keywords?.long_tail ?? []).slice(0, 400)}. Language: ${ctx.userInput.language ?? 'en'}.`,
+      `Write the main product content (800-1400 words) for "${ctx.userInput.niche ?? 'general'}" (${ctx.domainSlug} ${ctx.categorySlug}).
+
+${HUMAN_VOICE}
+
+This specific buyer's real pains: ${JSON.stringify(ctx.data.psychology?.pains ?? []).slice(0, 400)}. Their desired outcomes: ${JSON.stringify(ctx.data.psychology?.desires ?? []).slice(0, 300)}. Tone: ${ctx.data.psychology?.voice?.tone ?? 'confident, plain'}.
+Requirements: open with a concrete hook tied to one real pain (no "in today's..."); use clear markdown headings and short paragraphs; include at least one concrete example or mini-walkthrough; weave in these phrases naturally where they fit, never stuffed: ${JSON.stringify(ctx.data.keywords?.long_tail ?? []).slice(0, 400)}; end with a direct, non-cheesy call to action. Language: ${ctx.userInput.language ?? 'en'}. Return the content only.`,
     apply: (ctx, raw) => {
       ctx.data.content = raw
     },
@@ -91,7 +130,7 @@ const STEPS: StepDef[] = [
     taskType: 'generate_seo_tags',
     outputFormat: 'json',
     buildPrompt: (ctx) =>
-      `Return JSON {meta_title, meta_description, tags:[string] (13 items)} for a ${ctx.domainSlug} ${ctx.categorySlug} product in the niche "${ctx.userInput.niche ?? 'general'}". Primary keywords: ${JSON.stringify(ctx.data.keywords?.primary ?? []).slice(0, 200)}. Content excerpt: "${String(ctx.data.content ?? '').slice(0, 400)}".`,
+      `Write SEO metadata for "${ctx.userInput.niche ?? 'general'}" (${ctx.domainSlug} ${ctx.categorySlug}). The meta_description must be a real, specific, click-worthy sentence (≤155 chars) — concrete benefit, no clichés like "elevate/unlock/seamless". Tags should be terms a buyer actually searches, not generic filler.\nPrimary keywords: ${JSON.stringify(ctx.data.keywords?.primary ?? []).slice(0, 200)}. Content excerpt: "${String(ctx.data.content ?? '').slice(0, 400)}".\nReturn ONLY JSON {meta_title, meta_description, tags:[string] (13 items)}.`,
     apply: (ctx, raw) => {
       const j = safeJson(raw)
       ctx.data.seo = j
@@ -103,7 +142,8 @@ const STEPS: StepDef[] = [
     taskType: 'generate_short_copy',
     outputFormat: 'json',
     buildPrompt: (ctx) =>
-      `Return JSON {titles:[string] (exactly 3 items, 60-80 chars each)} for a ${ctx.domainSlug} ${ctx.categorySlug} product in the niche "${ctx.userInput.niche ?? 'general'}" using keywords ${JSON.stringify(ctx.data.keywords?.primary ?? []).slice(0, 160)}.`,
+      `Write 3 product titles for "${ctx.userInput.niche ?? 'general'}" (${ctx.domainSlug} ${ctx.categorySlug}). Each 60-80 chars, benefit-led and specific to this buyer — no clickbait, no "Ultimate/Best Ever", no banned clichés (${BANNED_PHRASES.slice(0, 12).join(', ')}...). Use these keywords where natural: ${JSON.stringify(ctx.data.keywords?.primary ?? []).slice(0, 160)}.
+Return ONLY JSON {titles:[string] (exactly 3)}.`,
     apply: (ctx, raw) => {
       const j = safeJson(raw)
       ctx.data.title_variants = Array.isArray(j?.titles) ? j.titles : []
@@ -114,7 +154,10 @@ const STEPS: StepDef[] = [
     taskType: 'quality_editor',
     outputFormat: 'text',
     buildPrompt: (ctx) =>
-      `Edit the following product copy for tone, flow, and grammar. Return the polished copy only. Copy:\n\n${String(ctx.data.content ?? '').slice(0, 4000)}`,
+      `You are a ruthless editor. Tighten this copy: cut filler and throat-clearing, fix flow and grammar, vary sentence length, and delete any cliché or hype. Keep all substance, examples, and keywords. Do NOT pad it back out. ${HUMAN_VOICE}
+Return the edited copy only.
+
+${String(ctx.data.content ?? '').slice(0, 4000)}`,
     apply: (ctx, raw) => {
       ctx.data.content = raw
     },
@@ -144,7 +187,11 @@ const STEPS: StepDef[] = [
     taskType: 'humanize',
     outputFormat: 'text',
     buildPrompt: (ctx) =>
-      `Rewrite this copy to sound more human and less AI-generated. Keep substance and keywords. Return copy only.\n\n${String(ctx.data.content ?? '').slice(0, 4000)}`,
+      `Rewrite this so no one could tell an AI wrote it. Keep all substance, structure, and keywords.
+${HUMAN_VOICE}
+Specifically: break up any uniform paragraph rhythm, replace any abstract sentence with a concrete one, remove every banned phrase above, and add the small imperfections of real writing (a short fragment, a direct aside) where natural. Don't add new fluff. Return the rewritten copy only.
+
+${String(ctx.data.content ?? '').slice(0, 4000)}`,
     apply: (ctx, raw) => {
       ctx.data.content = raw
     },
@@ -169,17 +216,19 @@ const STEPS: StepDef[] = [
       const j = safeJson(raw)
       ctx.data.platform_variants = Array.isArray(j?.variants) ? j.variants : []
     },
+    skip: (ctx) => !Array.isArray(ctx.userInput.selected_platform_ids) || (ctx.userInput.selected_platform_ids as unknown[]).length === 0,
   },
   {
     name: 'generate_social_content',
     taskType: 'social_adaptation',
     outputFormat: 'json',
     buildPrompt: (ctx) =>
-      `Return JSON {variants:[{channel_slug:string, caption:string, hashtags:[string], hook:string}]} for a "${ctx.userInput.niche ?? 'general'}" ${ctx.categorySlug} for channels ${JSON.stringify(ctx.userInput.selected_social_channel_ids ?? []).slice(0, 200)} from base copy "${String(ctx.data.content ?? '').slice(0, 400)}".`,
+      `Write social posts for "${ctx.userInput.niche ?? 'general'}" (${ctx.categorySlug}) for these channels: ${JSON.stringify(ctx.userInput.selected_social_channel_ids ?? []).slice(0, 200)}.\nEach caption must sound native to its platform and like a real person posted it — a strong first-line hook, one concrete benefit or example, no hashtag soup, no clichés (no "unlock/elevate/game-changer/in today's"). Hashtags: 3-5 relevant ones only.\nBase copy: "${String(ctx.data.content ?? '').slice(0, 400)}".\nReturn ONLY JSON {variants:[{channel_slug:string, caption:string, hashtags:[string], hook:string}]}.`,
     apply: (ctx, raw) => {
       const j = safeJson(raw)
       ctx.data.social_variants = Array.isArray(j?.variants) ? j.variants : []
     },
+    skip: (ctx) => !Array.isArray(ctx.userInput.selected_social_channel_ids) || (ctx.userInput.selected_social_channel_ids as unknown[]).length === 0,
   },
   {
     name: 'quality_ceo',
@@ -346,6 +395,15 @@ export class ProductWorkflow {
   private async runStep(ctx: WorkflowContext, runId: string, step: StepDef, index: number): Promise<void> {
     const now = () => new Date().toISOString()
     const stepId = crypto.randomUUID()
+    // Skip cleanly (no AI call) when the step has nothing to do — e.g. no
+    // platforms/channels selected. Avoids wasted calls and stalled runs.
+    if (step.skip?.(ctx)) {
+      await this.env.DB.prepare(
+        `INSERT INTO workflow_steps (id, run_id, step_name, step_type, step_order, status, started_at, completed_at)
+         VALUES (?, ?, ?, ?, ?, 'skipped', ?, ?)`
+      ).bind(stepId, runId, step.name, step.taskType, index, now(), now()).run()
+      return
+    }
     await this.env.DB.prepare(
       `INSERT INTO workflow_steps (id, run_id, step_name, step_type, step_order, status, started_at)
        VALUES (?, ?, ?, ?, ?, 'running', ?)`
@@ -386,11 +444,14 @@ export class ProductWorkflow {
   private async generateAndStoreImage(ctx: WorkflowContext): Promise<void> {
     const prompt = String(ctx.data.image_prompt || '').trim()
     if (!prompt) return
+    const ctl = new AbortController()
+    const timer = setTimeout(() => ctl.abort(), 60000)
     try {
       const req = new Request('https://nexus-ai/image', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ prompt }),
+        signal: ctl.signal,
       })
       const res = await this.env.AI_WORKER.fetch(req)
       if (res.status !== 200) return // 204 = no provider configured
@@ -402,6 +463,8 @@ export class ProductWorkflow {
       ctx.data.image_url = `/api/assets/r2/${key}`
     } catch (err) {
       console.error(`[workflow:${ctx.runId}] image generation failed:`, err)
+    } finally {
+      clearTimeout(timer)
     }
   }
 
@@ -414,20 +477,41 @@ export class ProductWorkflow {
     // with a short backoff. The AI worker already does cross-model failover.
     let lastErr: unknown
     for (let attempt = 1; attempt <= 3; attempt++) {
+      // Hard client-side deadline via Promise.race. AbortSignal isn't reliably
+      // honored on service-binding fetches, so even if the underlying request
+      // never cancels we stop awaiting it after the deadline and move on. The
+      // catch in runStep then marks the step failed and the run continues.
+      const ctl = new AbortController()
       try {
-        const req = new Request('https://nexus-ai/task', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ taskType, prompt, outputFormat, timeoutMs: 90000 }),
-        })
-        const res = await this.env.AI_WORKER.fetch(req)
-        if (!res.ok) {
-          const text = await res.text().catch(() => res.statusText)
-          throw new Error(`AI worker ${taskType} failed: ${res.status} ${text}`)
-        }
-        return (await res.json()) as AIRunTaskResponse
+        const fetchP = (async () => {
+          const req = new Request('https://nexus-ai/task', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ taskType, prompt, outputFormat, timeoutMs: 60000 }),
+            signal: ctl.signal,
+          })
+          const res = await this.env.AI_WORKER.fetch(req)
+          if (!res.ok) {
+            const text = await res.text().catch(() => res.statusText)
+            throw new Error(`AI worker ${taskType} failed: ${res.status} ${text}`)
+          }
+          return (await res.json()) as AIRunTaskResponse
+        })()
+        const result = await Promise.race([
+          fetchP,
+          new Promise<never>((_, reject) =>
+            setTimeout(() => {
+              ctl.abort()
+              reject(new Error(`__deadline__ ${taskType}`))
+            }, 70000),
+          ),
+        ])
+        return result
       } catch (err) {
         lastErr = err
+        // A deadline means the engine is genuinely slow right now — retrying
+        // just burns another 70s, so stop and let the run continue.
+        if (err instanceof Error && err.message.startsWith('__deadline__')) break
         if (attempt < 3) await new Promise((r) => setTimeout(r, 400 * attempt))
       }
     }
