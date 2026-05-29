@@ -6,6 +6,7 @@ import { Bot, Send, Loader2, CheckCircle2, XCircle, ExternalLink, Wrench } from 
 import { api, type ManagerMessage, type AgentStep } from '@/lib/api'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 import { Markdown } from '@/components/Markdown'
+import { VoiceInput } from '@/components/VoiceInput'
 
 interface ChatTurn extends ManagerMessage {
   steps?: AgentStep[]
@@ -157,6 +158,10 @@ export default function CeoManagerPage() {
               placeholder="Tell your CEO what to do…"
               className="input flex-1"
               disabled={busy}
+            />
+            <VoiceInput
+              disabled={busy}
+              onTranscript={(t) => setInput((prev) => (prev ? `${prev} ${t}` : t))}
             />
             <button
               type="submit"

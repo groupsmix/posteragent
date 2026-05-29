@@ -8,6 +8,7 @@ import { api } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { VoiceInput } from '@/components/VoiceInput'
 import { Loader2, Check, X } from 'lucide-react'
 import Link from 'next/link'
 import type { Platform, SocialChannel } from '@nexus/types'
@@ -116,21 +117,30 @@ export default function ProductSetupPage() {
 
           {/* Optional Fields */}
           {[
-            { key: 'niche', label: 'Niche', placeholder: 'e.g. "freelancers", "dog moms"' },
-            { key: 'product_name', label: 'Product Name', placeholder: 'Leave empty for AI' },
-            { key: 'description', label: 'Brief Description', placeholder: 'What this product does' },
-            { key: 'keywords', label: 'Keywords', placeholder: 'e.g. "notion, crm, productivity"' },
-          ].map(({ key, label, placeholder }) => (
+            { key: 'niche', label: 'Niche', placeholder: 'e.g. "freelancers", "dog moms"', voice: true },
+            { key: 'product_name', label: 'Product Name', placeholder: 'Leave empty for AI', voice: false },
+            { key: 'description', label: 'Brief Description', placeholder: 'What this product does', voice: true },
+            { key: 'keywords', label: 'Keywords', placeholder: 'e.g. "notion, crm, productivity"', voice: true },
+          ].map(({ key, label, placeholder, voice }) => (
             <div key={key}>
               <label className="text-sm font-medium text-muted-foreground">
                 {label} <span className="text-xs">(optional)</span>
               </label>
-              <Input
-                value={(form as any)[key]}
-                onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                placeholder={placeholder}
-                className="mt-1"
-              />
+              <div className="mt-1 flex items-center gap-2">
+                <Input
+                  value={(form as any)[key]}
+                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  placeholder={placeholder}
+                  className="flex-1"
+                />
+                {voice && (
+                  <VoiceInput
+                    onTranscript={t =>
+                      setForm(f => ({ ...f, [key]: (f as any)[key] ? `${(f as any)[key]} ${t}` : t }))
+                    }
+                  />
+                )}
+              </div>
             </div>
           ))}
 
