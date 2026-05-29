@@ -392,6 +392,65 @@ export interface NicheScoreResponse {
   quality_gate: QualityGateResult
 }
 
+// POD (Print on Demand) types
+export interface PODShop {
+  id: number
+  title: string
+  sales_channel: string
+}
+
+export interface PODBlueprint {
+  id: number
+  title: string
+  description: string
+  brand: string
+  model: string
+  images: string[]
+}
+
+export interface PODProduct {
+  id: string
+  printify_product_id: string | null
+  shop_id: string | null
+  blueprint_id: number | null
+  title: string
+  description: string | null
+  niche: string | null
+  product_type: string
+  design_prompt: string | null
+  design_url: string | null
+  status: string
+  printify_url: string | null
+  price_cents: number
+  created_at: string
+  published_at: string | null
+}
+
+export interface PODDesignSpec {
+  prompt: string
+  productType: string
+  niche: string
+  dimensions: { width: number; height: number }
+  style: string
+  elements: { title: string; tagline: string; layout: string }
+}
+
+export interface PODCreateResult {
+  id: string
+  title: string
+  description: string
+  design: PODDesignSpec
+  printify_product_id: string | null
+  status: string
+}
+
+export interface PODStats {
+  total_products: number
+  published: number
+  revenue_estimate_cents: number
+  revenue_estimate_usd: number
+}
+
 const TOKEN_KEY = 'nexus_token'
 
 export function getToken(): string | null {
@@ -674,4 +733,20 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ niche }),
     }),
+
+  // Print on Demand (POD)
+  getPodShops: () => apiFetch<{ shops: PODShop[] }>('/api/pod/shops'),
+  getPodBlueprints: () => apiFetch<{ blueprints: PODBlueprint[]; total: number }>('/api/pod/blueprints'),
+  getPodProducts: (status?: string) => {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : ''
+    return apiFetch<{ products: PODProduct[] }>(`/api/pod/products${qs}`)
+  },
+  createPodProduct: (data: { niche: string; productType: string; title?: string; description?: string; shopId?: string; blueprintId?: number }) =>
+    apiFetch<PODCreateResult>('/api/pod/products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  publishPodProduct: (id: string) =>
+    apiFetch<{ ok: boolean; id: string; status: string }>(`/api/pod/products/${id}/publish`, { method: 'POST' }),
+  getPodStats: () => apiFetch<PODStats>('/api/pod/stats'),
 }
