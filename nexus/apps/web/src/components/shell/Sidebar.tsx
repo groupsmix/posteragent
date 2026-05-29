@@ -29,6 +29,7 @@ const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
     title: 'Revenue',
     items: [
       { to: '/revenue', label: 'Revenue', icon: DollarSign },
+      { to: '/platforms', label: 'Platforms', icon: Globe2 },
       { to: '/learning', label: 'Learning Loop', icon: Brain },
       { to: '/intelligence', label: 'Intelligence', icon: Radar },
       { to: '/marketing', label: 'Marketing', icon: Megaphone },

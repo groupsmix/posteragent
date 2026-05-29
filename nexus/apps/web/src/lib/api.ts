@@ -88,6 +88,67 @@ export interface BrowseResult {
   error?: string
 }
 
+// Browser-action types
+export type ActionType = 'click' | 'type' | 'select' | 'scroll' | 'wait' | 'screenshot' | 'navigate' | 'fillForm'
+
+export interface BrowserAction {
+  type: ActionType
+  selector?: string
+  value?: string
+  url?: string
+  waitMs?: number
+  fields?: Record<string, string>
+}
+
+export interface ActionResult {
+  action: ActionType
+  ok: boolean
+  message?: string
+  screenshotKey?: string
+  durationMs: number
+}
+
+export interface ExecutionResult {
+  ok: boolean
+  results: ActionResult[]
+  totalMs: number
+  error?: string
+}
+
+export interface FlowInfo {
+  name: string
+  platform: string
+  stepCount: number
+  variables: string[]
+}
+
+export interface PlatformStatusInfo {
+  name: string
+  method: 'browser' | 'api'
+  configured: boolean
+  requiresAuth: boolean
+  baseUrl: string
+}
+
+export interface ListingResult {
+  platform: string
+  ok: boolean
+  execution?: ExecutionResult
+  error?: string
+  listingId?: string
+}
+
+export interface PlatformListing {
+  id: string
+  product_id: string
+  platform: string
+  platform_url: string | null
+  status: string
+  listed_at: string | null
+  error: string | null
+  created_at: string
+}
+
 export interface AgentReply {
   reply: string
   steps: AgentStep[]
@@ -749,4 +810,33 @@ export const api = {
   publishPodProduct: (id: string) =>
     apiFetch<{ ok: boolean; id: string; status: string }>(`/api/pod/products/${id}/publish`, { method: 'POST' }),
   getPodStats: () => apiFetch<PODStats>('/api/pod/stats'),
+
+  // Browser actions & multi-platform listing
+  executeBrowserActions: (actions: BrowserAction[]) =>
+    apiFetch<ExecutionResult>('/api/browser/actions', {
+      method: 'POST',
+      body: JSON.stringify({ actions }),
+    }),
+  getBrowserFlows: () => apiFetch<{ flows: FlowInfo[] }>('/api/browser/flows'),
+  executeBrowserFlow: (name: string, variables?: Record<string, string>) =>
+    apiFetch<ExecutionResult & { flow: string; platform: string }>(`/api/browser/flows/${name}/execute`, {
+      method: 'POST',
+      body: JSON.stringify({ variables }),
+    }),
+  getPlatformStatuses: () =>
+    apiFetch<{ platforms: PlatformStatusInfo[] }>('/api/browser/platforms/status'),
+  listOnPlatform: (platformName: string, product: Record<string, string>) =>
+    apiFetch<ListingResult>(`/api/browser/platforms/${platformName}/list`, {
+      method: 'POST',
+      body: JSON.stringify({ product }),
+    }),
+  listOnAllPlatforms: (product: Record<string, string>, platforms?: string[]) =>
+    apiFetch<{ results: ListingResult[] }>('/api/browser/platforms/list-all', {
+      method: 'POST',
+      body: JSON.stringify({ product, platforms }),
+    }),
+  getPlatformListings: (productId?: string) => {
+    const qs = productId ? `?product_id=${productId}` : ''
+    return apiFetch<{ listings: PlatformListing[] }>(`/api/browser/platforms/listings${qs}`)
+  },
 }
