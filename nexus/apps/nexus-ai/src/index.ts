@@ -5,6 +5,7 @@
 
 import { Hono } from 'hono'
 import { runWithFailover } from './failover'
+import { generateImage } from './image'
 import type { TaskType, AIRunTaskRequest, AIRunTaskResponse } from './types'
 
 interface Env {
@@ -56,6 +57,26 @@ app.post('/task', async (c) => {
       },
       500
     )
+  }
+})
+
+// ============================================================
+// Image Generation Endpoint
+// ============================================================
+// Returns a real generated image as base64 (or 204 when no image provider is
+// configured, so the workflow can continue without one).
+
+app.post('/image', async (c) => {
+  const { prompt } = await c.req.json<{ prompt?: string }>()
+  if (!prompt) return c.json({ error: 'prompt is required' }, 400)
+
+  try {
+    const image = await generateImage(prompt, c.env)
+    if (!image) return c.body(null, 204)
+    return c.json(image)
+  } catch (error) {
+    console.error('[NEXUS-AI] image generation failed', error)
+    return c.json({ error: error instanceof Error ? error.message : 'image failed' }, 500)
   }
 })
 

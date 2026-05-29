@@ -9,6 +9,7 @@ export default function PublishPage() {
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<Record<string, boolean>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     api.getPublishQueue()
@@ -18,10 +19,14 @@ export default function PublishPage() {
 
   async function publish(id: string) {
     setBusy((b) => ({ ...b, [id]: true }))
+    setErrors((e) => { const next = { ...e }; delete next[id]; return next })
     try {
       await api.publishItem(id)
       setItems((list) => list.filter((it) => it.id !== id))
-    } catch {
+    } catch (err) {
+      // Real publish failed (e.g. missing platform credentials) — keep the item
+      // and show why, instead of pretending it succeeded.
+      setErrors((e) => ({ ...e, [id]: err instanceof Error ? err.message : 'Publish failed' }))
       setBusy((b) => ({ ...b, [id]: false }))
     }
   }
@@ -46,6 +51,9 @@ export default function PublishPage() {
                 <div className="text-sm">
                   <div className="font-medium">{item.product_name || item.title || item.id}</div>
                   <div className="text-xs text-muted-foreground">{item.platform_name ?? '—'}</div>
+                  {errors[item.id] && (
+                    <div className="mt-1 text-xs text-red-500 max-w-md">{errors[item.id]}</div>
+                  )}
                 </div>
                 <button
                   onClick={() => publish(item.id)}

@@ -24,6 +24,8 @@ export interface Product {
   graveyard_at: string | null
   graveyard_reason: string | null
   resurface_at: string | null
+  image_url?: string | null
+  generated_offline?: number
   created_at: string
   updated_at: string
 }

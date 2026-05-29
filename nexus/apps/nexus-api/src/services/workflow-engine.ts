@@ -246,6 +246,7 @@ export class ProductWorkflow {
           const prompt = step.buildPrompt(ctx)
           const result = await this.callAI(step.taskType, prompt, step.outputFormat)
           step.apply(ctx, result.output)
+          if (result.model_used === 'offline-template') ctx.data.usedOffline = true
 
           await this.env.DB.prepare(
             `UPDATE workflow_steps
@@ -270,6 +271,10 @@ export class ProductWorkflow {
           // keep going with whatever ctx.data we already have
         }
       }
+
+      // Generate the real hero image from the prompt (no-op if no image
+      // provider is configured) before persisting.
+      await this.generateAndStoreImage(ctx)
 
       await this.persistResults(ctx)
 
@@ -302,6 +307,31 @@ export class ProductWorkflow {
       await this.env.DB.prepare(
         `UPDATE products SET status='rejected', updated_at=? WHERE id=?`
       ).bind(now(), productId).run()
+    }
+  }
+
+  // Generate the real hero image from ctx.data.image_prompt and store it to
+  // R2. Sets ctx.data.image_url to a path served by GET /api/assets/:key.
+  // Silently no-ops when no image provider is configured or on any error.
+  private async generateAndStoreImage(ctx: WorkflowContext): Promise<void> {
+    const prompt = String(ctx.data.image_prompt || '').trim()
+    if (!prompt) return
+    try {
+      const req = new Request('https://nexus-ai/image', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      })
+      const res = await this.env.AI_WORKER.fetch(req)
+      if (res.status !== 200) return // 204 = no provider configured
+      const img = (await res.json()) as { base64: string; contentType: string }
+      const bytes = Uint8Array.from(atob(img.base64), (ch) => ch.charCodeAt(0))
+      const ext = img.contentType.includes('jpeg') ? 'jpg' : 'png'
+      const key = `products/${ctx.productId}.${ext}`
+      await this.env.ASSETS.put(key, bytes, { httpMetadata: { contentType: img.contentType } })
+      ctx.data.image_url = `/api/assets/r2/${key}`
+    } catch (err) {
+      console.error(`[workflow:${ctx.runId}] image generation failed:`, err)
     }
   }
 
@@ -349,6 +379,8 @@ export class ProductWorkflow {
              price = ?,
              currency = ?,
              revenue_estimate = ?,
+             image_url = COALESCE(?, image_url),
+             generated_offline = ?,
              updated_at = ?
        WHERE id = ?`
     ).bind(
@@ -358,6 +390,8 @@ export class ProductWorkflow {
       price,
       currency,
       ctx.data.revenue ? JSON.stringify(ctx.data.revenue) : null,
+      ctx.data.image_url ?? null,
+      ctx.data.usedOffline ? 1 : 0,
       now,
       productId,
     ).run()
