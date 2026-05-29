@@ -71,7 +71,7 @@ const STEPS: StepDef[] = [
     taskType: 'generate_long_form',
     outputFormat: 'text',
     buildPrompt: (ctx) =>
-      `Write the main product content (800-1400 words) for a ${ctx.domainSlug} ${ctx.categorySlug}. Tone: ${ctx.data.psychology?.voice?.tone ?? 'confident, helpful'}. Address the pains ${JSON.stringify(ctx.data.psychology?.pains ?? [])}. Include the long-tail keywords ${JSON.stringify(ctx.data.keywords?.long_tail ?? []).slice(0, 400)}. Language: ${ctx.userInput.language ?? 'en'}.`,
+      `Write the main product content (800-1400 words) for a ${ctx.domainSlug} ${ctx.categorySlug} in the niche "${ctx.userInput.niche ?? 'general'}". Tone: ${ctx.data.psychology?.voice?.tone ?? 'confident, helpful'}. Address the pains ${JSON.stringify(ctx.data.psychology?.pains ?? [])}. Include the long-tail keywords ${JSON.stringify(ctx.data.keywords?.long_tail ?? []).slice(0, 400)}. Language: ${ctx.userInput.language ?? 'en'}.`,
     apply: (ctx, raw) => {
       ctx.data.content = raw
     },
@@ -81,7 +81,7 @@ const STEPS: StepDef[] = [
     taskType: 'generate_image_prompt',
     outputFormat: 'text',
     buildPrompt: (ctx) =>
-      `Write ONE image generation prompt (≤80 words) for a ${ctx.domainSlug} ${ctx.categorySlug} product. Mood derived from: ${JSON.stringify(ctx.data.psychology?.emotional_triggers ?? []).slice(0, 200)}. Output the prompt only, no preamble.`,
+      `Write ONE image generation prompt (≤80 words) for a ${ctx.domainSlug} ${ctx.categorySlug} product in the niche "${ctx.userInput.niche ?? 'general'}". Mood derived from: ${JSON.stringify(ctx.data.psychology?.emotional_triggers ?? []).slice(0, 200)}. Output the prompt only, no preamble.`,
     apply: (ctx, raw) => {
       ctx.data.image_prompt = raw.trim()
     },
@@ -91,7 +91,7 @@ const STEPS: StepDef[] = [
     taskType: 'generate_seo_tags',
     outputFormat: 'json',
     buildPrompt: (ctx) =>
-      `Return JSON {meta_title, meta_description, tags:[string] (13 items)} for product. Primary keywords: ${JSON.stringify(ctx.data.keywords?.primary ?? []).slice(0, 200)}. Content excerpt: "${String(ctx.data.content ?? '').slice(0, 400)}".`,
+      `Return JSON {meta_title, meta_description, tags:[string] (13 items)} for a ${ctx.domainSlug} ${ctx.categorySlug} product in the niche "${ctx.userInput.niche ?? 'general'}". Primary keywords: ${JSON.stringify(ctx.data.keywords?.primary ?? []).slice(0, 200)}. Content excerpt: "${String(ctx.data.content ?? '').slice(0, 400)}".`,
     apply: (ctx, raw) => {
       const j = safeJson(raw)
       ctx.data.seo = j
@@ -103,7 +103,7 @@ const STEPS: StepDef[] = [
     taskType: 'generate_short_copy',
     outputFormat: 'json',
     buildPrompt: (ctx) =>
-      `Return JSON {titles:[string] (exactly 3 items, 60-80 chars each)} for a ${ctx.domainSlug} ${ctx.categorySlug} product using keywords ${JSON.stringify(ctx.data.keywords?.primary ?? []).slice(0, 160)}.`,
+      `Return JSON {titles:[string] (exactly 3 items, 60-80 chars each)} for a ${ctx.domainSlug} ${ctx.categorySlug} product in the niche "${ctx.userInput.niche ?? 'general'}" using keywords ${JSON.stringify(ctx.data.keywords?.primary ?? []).slice(0, 160)}.`,
     apply: (ctx, raw) => {
       const j = safeJson(raw)
       ctx.data.title_variants = Array.isArray(j?.titles) ? j.titles : []
@@ -164,7 +164,7 @@ const STEPS: StepDef[] = [
     taskType: 'platform_variation',
     outputFormat: 'json',
     buildPrompt: (ctx) =>
-      `Return JSON {variants:[{platform_slug:string, title:string, description:string, tags:[string], price:number}]} for each of these platform slugs: ${JSON.stringify(ctx.userInput.selected_platform_ids ?? []).slice(0, 200)}. Base copy: "${String(ctx.data.content ?? '').slice(0, 600)}".`,
+      `Return JSON {variants:[{platform_slug:string, title:string, description:string, tags:[string], price:number}]} for a "${ctx.userInput.niche ?? 'general'}" ${ctx.categorySlug} for each of these platform slugs: ${JSON.stringify(ctx.userInput.selected_platform_ids ?? []).slice(0, 200)}. Base copy: "${String(ctx.data.content ?? '').slice(0, 600)}".`,
     apply: (ctx, raw) => {
       const j = safeJson(raw)
       ctx.data.platform_variants = Array.isArray(j?.variants) ? j.variants : []
@@ -175,7 +175,7 @@ const STEPS: StepDef[] = [
     taskType: 'social_adaptation',
     outputFormat: 'json',
     buildPrompt: (ctx) =>
-      `Return JSON {variants:[{channel_slug:string, caption:string, hashtags:[string], hook:string}]} for channels ${JSON.stringify(ctx.userInput.selected_social_channel_ids ?? []).slice(0, 200)} from base copy "${String(ctx.data.content ?? '').slice(0, 400)}".`,
+      `Return JSON {variants:[{channel_slug:string, caption:string, hashtags:[string], hook:string}]} for a "${ctx.userInput.niche ?? 'general'}" ${ctx.categorySlug} for channels ${JSON.stringify(ctx.userInput.selected_social_channel_ids ?? []).slice(0, 200)} from base copy "${String(ctx.data.content ?? '').slice(0, 400)}".`,
     apply: (ctx, raw) => {
       const j = safeJson(raw)
       ctx.data.social_variants = Array.isArray(j?.variants) ? j.variants : []
@@ -382,7 +382,7 @@ export class ProductWorkflow {
       for (const v of ctx.data.platform_variants) {
         if (!v?.platform_slug) continue
         const platform = await this.env.DB.prepare(
-          `SELECT id FROM platforms WHERE slug = ? LIMIT 1`
+          `SELECT id FROM platforms WHERE slug = ?1 OR id = ?1 LIMIT 1`
         ).bind(v.platform_slug).first<{ id: string }>()
         if (!platform) continue
         await this.env.DB.prepare(
@@ -408,7 +408,7 @@ export class ProductWorkflow {
       for (const v of ctx.data.social_variants) {
         if (!v?.channel_slug) continue
         const chan = await this.env.DB.prepare(
-          `SELECT id FROM social_channels WHERE slug = ? LIMIT 1`
+          `SELECT id FROM social_channels WHERE slug = ?1 OR id = ?1 LIMIT 1`
         ).bind(v.channel_slug).first<{ id: string }>()
         if (!chan) continue
         await this.env.DB.prepare(

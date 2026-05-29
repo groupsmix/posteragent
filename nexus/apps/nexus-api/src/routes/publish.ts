@@ -4,6 +4,33 @@ import type { PublishRequest, PublishResult } from '../types'
 
 export const publishRoutes = new Hono<{ Bindings: Env }>()
 
+// GET /publish - List the publish queue (approved products with unpublished
+// platform variants ready to go live)
+publishRoutes.get('/', async (c) => {
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT
+        pv.id,
+        pv.product_id,
+        pv.platform_id,
+        pv.title,
+        pv.status,
+        p.name AS product_name,
+        pl.name AS platform_name
+      FROM platform_variants pv
+      JOIN products p ON pv.product_id = p.id
+      JOIN platforms pl ON pv.platform_id = pl.id
+      WHERE p.status = 'approved' AND pv.status != 'published'
+      ORDER BY p.updated_at DESC
+    `).all()
+
+    return c.json({ items: result.results })
+  } catch (err) {
+    console.error('Error listing publish queue:', err)
+    return c.json({ error: 'Failed to list publish queue' }, 500)
+  }
+})
+
 // POST /publish - Publish product to platforms
 publishRoutes.post('/', async (c) => {
   try {
@@ -101,6 +128,48 @@ publishRoutes.post('/schedule', async (c) => {
   } catch (err) {
     console.error('Error scheduling publish:', err)
     return c.json({ error: 'Failed to schedule publishing' }, 500)
+  }
+})
+
+// POST /publish/:id - Publish a single platform variant (by variant id)
+publishRoutes.post('/:id', async (c) => {
+  try {
+    const id = c.req.param('id')
+
+    const variant = await c.env.DB.prepare(`
+      SELECT pv.*, pl.url as platform_url
+      FROM platform_variants pv
+      JOIN platforms pl ON pv.platform_id = pl.id
+      WHERE pv.id = ?
+    `).bind(id).first() as any
+
+    if (!variant) {
+      return c.json({ error: 'Variant not found' }, 404)
+    }
+
+    const now = new Date().toISOString()
+    const publishedUrl = `${variant.platform_url || '#'}/${variant.id}`
+
+    // TODO: Integrate with actual platform publishing APIs.
+    await c.env.DB.prepare(`
+      UPDATE platform_variants SET status = 'published', published_at = ?, published_url = ? WHERE id = ?
+    `).bind(now, publishedUrl, id).run()
+
+    // If every variant for this product is now published, mark the product published.
+    const remaining = await c.env.DB.prepare(`
+      SELECT COUNT(*) as n FROM platform_variants WHERE product_id = ? AND status != 'published'
+    `).bind(variant.product_id).first<{ n: number }>()
+
+    if (remaining && remaining.n === 0) {
+      await c.env.DB.prepare(`
+        UPDATE products SET status = 'published', updated_at = ? WHERE id = ?
+      `).bind(now, variant.product_id).run()
+    }
+
+    return c.json({ id, status: 'published', published_url: publishedUrl })
+  } catch (err) {
+    console.error('Error publishing variant:', err)
+    return c.json({ error: 'Failed to publish variant' }, 500)
   }
 })
 

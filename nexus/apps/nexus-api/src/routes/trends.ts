@@ -6,22 +6,33 @@ export const trendRoutes = new Hono<{ Bindings: Env }>()
 // GET /trends - List trend alerts
 trendRoutes.get('/', async (c) => {
   try {
-    const dismissed = c.req.query('include_dismissed') === 'true'
+    const includeDismissed = c.req.query('include_dismissed') === 'true'
     const limit = parseInt(c.req.query('limit') || '20')
     const offset = parseInt(c.req.query('offset') || '0')
-    
-    let query = 'SELECT * FROM trend_alerts'
-    if (!dismissed) {
-      query += ' WHERE dismissed = 0'
+
+    let query = `
+      SELECT
+        id,
+        domain_id,
+        trend_keyword AS keyword,
+        trend_score AS engagement_score,
+        demand_window,
+        source,
+        suggested_niche AS trend_type,
+        status,
+        detected_at,
+        dismissed_at,
+        workflow_id
+      FROM trend_alerts
+    `
+    if (!includeDismissed) {
+      query += " WHERE status != 'dismissed'"
     }
     query += ' ORDER BY detected_at DESC LIMIT ? OFFSET ?'
-    
+
     const result = await c.env.DB.prepare(query).bind(limit, offset).all()
-    
-    return c.json({
-      trends: result.results,
-      total: result.results.length,
-    })
+
+    return c.json(result.results)
   } catch (err) {
     console.error('Error listing trends:', err)
     return c.json({ error: 'Failed to list trends' }, 500)
@@ -34,7 +45,7 @@ trendRoutes.post('/:id/dismiss', async (c) => {
     const id = c.req.param('id')
     
     const result = await c.env.DB.prepare(`
-      UPDATE trend_alerts SET dismissed = 1, dismissed_at = ? WHERE id = ?
+      UPDATE trend_alerts SET status = 'dismissed', dismissed_at = ? WHERE id = ?
     `).bind(new Date().toISOString(), id).run()
     
     if (result.meta.changes === 0) {
@@ -69,8 +80,8 @@ trendRoutes.post('/:id/start', async (c) => {
     const category = await c.env.DB.prepare('SELECT id FROM categories WHERE is_active = 1 LIMIT 1').first() as any
     
     const userInput = {
-      niche: trend.keyword,
-      keywords: trend.keyword,
+      niche: trend.trend_keyword,
+      keywords: trend.trend_keyword,
       source: 'trend',
       trend_id: trendId,
     }
@@ -97,7 +108,7 @@ trendRoutes.post('/:id/start', async (c) => {
     return c.json({
       workflow_id: runId,
       product_id: productId,
-      keyword: trend.keyword,
+      keyword: trend.trend_keyword,
     })
   } catch (err) {
     console.error('Error starting workflow from trend:', err)
