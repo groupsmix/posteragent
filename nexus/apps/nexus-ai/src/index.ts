@@ -6,6 +6,7 @@
 import { Hono } from 'hono'
 import { runWithFailover } from './failover'
 import { generateImage } from './image'
+import { AI_REGISTRY } from './registry'
 import type { TaskType, AIRunTaskRequest, AIRunTaskResponse } from './types'
 
 interface Env {
@@ -79,6 +80,34 @@ app.post('/image', async (c) => {
     console.error('[NEXUS-AI] image generation failed', error)
     return c.json({ error: error instanceof Error ? error.message : 'image failed' }, 500)
   }
+})
+
+// ============================================================
+// Registry Endpoint — the model line-up per task type, so the dashboard
+// can show which model each role uses + its fallback chain.
+// ============================================================
+
+app.get('/registry', async (c) => {
+  const out: Record<string, { id: string; name: string; provider: string; rank: number; isFree: boolean; why: string; configured: boolean }[]> = {}
+  for (const [taskType, models] of Object.entries(AI_REGISTRY)) {
+    const rows = []
+    for (const m of models) {
+      let configured = false
+      if (m.secretKey) {
+        try {
+          const v = await c.env.CONFIG.get(`secret:${m.secretKey}`)
+          configured = Boolean(v)
+        } catch {}
+        const envVal = (c.env as Record<string, unknown>)[m.secretKey]
+        if (!configured && typeof envVal === 'string' && envVal.length > 0) configured = true
+      } else {
+        configured = true // no key required (e.g. Cloudflare Workers AI)
+      }
+      rows.push({ id: m.id, name: m.name, provider: m.provider, rank: m.rank, isFree: Boolean(m.isFree), why: m.why || '', configured })
+    }
+    out[taskType] = rows.sort((a, b) => a.rank - b.rank)
+  }
+  return c.json({ registry: out })
 })
 
 // ============================================================

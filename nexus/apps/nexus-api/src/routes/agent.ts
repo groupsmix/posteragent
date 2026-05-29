@@ -42,15 +42,25 @@ function jsonFromModel(raw: string): any {
 }
 
 async function callAI(env: Env, prompt: string): Promise<string> {
-  const req = new Request('https://nexus-ai/task', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ taskType: 'manager_plan', prompt, outputFormat: 'json', timeoutMs: 60000 }),
-  })
-  const res = await env.AI_WORKER.fetch(req)
-  if (!res.ok) throw new Error(`AI worker failed: ${res.status}`)
-  const data = (await res.json()) as { output?: string }
-  return data.output ?? ''
+  let lastErr: unknown = null
+  // Retry transient free-tier hiccups so the CEO rarely shows an engine error.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const req = new Request('https://nexus-ai/task', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ taskType: 'manager_plan', prompt, outputFormat: 'json', timeoutMs: 60000 }),
+      })
+      const res = await env.AI_WORKER.fetch(req)
+      if (!res.ok) throw new Error(`AI worker failed: ${res.status}`)
+      const data = (await res.json()) as { output?: string }
+      return data.output ?? ''
+    } catch (err) {
+      lastErr = err
+      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)))
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error('ai_unreachable')
 }
 
 async function getCatalog(env: Env) {
