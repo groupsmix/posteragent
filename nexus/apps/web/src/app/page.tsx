@@ -49,15 +49,15 @@ export default function HomePage() {
 
         {/* Quick actions */}
         <div className="grid gap-3 sm:grid-cols-3">
-          <Link href="/create" className="group flex items-center justify-between rounded-xl border border-border bg-gradient-card p-5 hover:border-primary/40 hover:shadow-glow transition-all">
+          <Link href="/create" className="group flex items-center justify-between rounded-2xl border border-border bg-gradient-card p-5 shadow-card hover:border-primary/40 hover:shadow-glow transition-all">
             <span className="flex items-center gap-3 font-semibold"><Plus className="h-5 w-5 text-primary" /> Build a product</span>
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
           </Link>
-          <Link href="/ceo" className="group flex items-center justify-between rounded-xl border border-border bg-gradient-card p-5 hover:border-primary/40 hover:shadow-glow transition-all">
+          <Link href="/ceo" className="group flex items-center justify-between rounded-2xl border border-border bg-gradient-card p-5 shadow-card hover:border-primary/40 hover:shadow-glow transition-all">
             <span className="flex items-center gap-3 font-semibold"><Bot className="h-5 w-5 text-primary" /> Talk to the CEO</span>
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
           </Link>
-          <Link href="/review" className="group flex items-center justify-between rounded-xl border border-border bg-gradient-card p-5 hover:border-primary/40 hover:shadow-glow transition-all">
+          <Link href="/review" className="group flex items-center justify-between rounded-2xl border border-border bg-gradient-card p-5 shadow-card hover:border-primary/40 hover:shadow-glow transition-all">
             <span className="flex items-center gap-3 font-semibold"><ShieldCheck className="h-5 w-5 text-primary" /> Review queue</span>
             <span className="flex items-center gap-2">
               {counts && counts.pending > 0 && (
@@ -84,8 +84,8 @@ export default function HomePage() {
         </div>
 
         {/* Recent activity */}
-        <div className="rounded-xl border border-border bg-card/50 p-5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold mb-3"><Activity className="h-4 w-4" /> Recent activity</h2>
+        <div className="rounded-2xl border border-border bg-card/50 p-5 shadow-card">
+          <h2 className="flex items-center gap-2 text-sm font-semibold mb-3"><Activity className="h-4 w-4 text-primary" /> Recent activity</h2>
           {auto && auto.recent && auto.recent.length > 0 ? (
             <ul className="divide-y divide-border">
               {auto.recent.slice(0, 8).map((r, i) => (
@@ -108,8 +108,11 @@ function Stat({ icon, label, value, sub, href, valueClass }: {
   icon: React.ReactNode; label: string; value: string; sub?: string; href: string; valueClass?: string
 }) {
   return (
-    <Link href={href} className="rounded-xl border border-border bg-card p-4 hover:border-primary/40 transition-colors">
-      <div className="flex items-center gap-2 text-muted-foreground">{icon}<span className="text-xs">{label}</span></div>
+    <Link href={href} className="rounded-2xl border border-border bg-card p-4 shadow-card hover:border-primary/40 hover:shadow-glow transition-all">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">{icon}</span>
+        <span className="text-xs">{label}</span>
+      </div>
       <div className={`mt-2 text-2xl font-bold ${valueClass ?? ''}`}>{value}</div>
       {sub && <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div>}
     </Link>
