@@ -50,7 +50,7 @@ jobs:
 
       # Deploy frontend to Cloudflare Pages
       - name: Deploy frontend
-        run: wrangler pages deploy .vercel/output/static --project-name nexus-web-cl2
+        run: wrangler pages deploy .vercel/output/static --project-name nexus-web
         working-directory: nexus/apps/web
 
       # Run D1 migrations (continue on error — some may already be applied)
