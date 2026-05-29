@@ -12,7 +12,7 @@
 
 import type { Env } from '../env'
 import type { TaskType, AIRunTaskResponse } from '@nexus/types'
-import { getAccessHash } from '../routes/auth'
+import { callAI as sharedCallAI, safeJson } from './shared'
 
 interface StepDef {
   name: string
@@ -371,11 +371,9 @@ export class ProductWorkflow {
       // worker invocation — fire-and-forget so it doesn't extend this run's
       // time budget. A cron backfill + manual button cover any that miss.
       if (this.env.SELF) {
-        const hash = await getAccessHash(this.env).catch(() => null)
         this.env.SELF.fetch(
           new Request(`https://nexus-api/api/products/${productId}/generate-deliverable`, {
             method: 'POST',
-            headers: hash ? { Authorization: `Bearer ${hash}` } : {},
           }),
         ).catch(() => void 0)
       }
@@ -392,11 +390,14 @@ export class ProductWorkflow {
   }
 
   // Run `items` through `worker` with at most `limit` running at once.
+  // Uses a queue that hands out items one-at-a-time to avoid the race
+  // where two runners both read the same `cursor` before either increments.
   private async runWithConcurrency<T>(items: T[], limit: number, worker: (item: T) => Promise<void>): Promise<void> {
-    let cursor = 0
+    const queue = items.slice() // defensive copy
+    const next = (): T | undefined => queue.shift()
     const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
-      while (cursor < items.length) {
-        const item = items[cursor++]
+      let item: T | undefined
+      while ((item = next()) !== undefined) {
         await worker(item)
       }
     })
@@ -487,49 +488,7 @@ export class ProductWorkflow {
     prompt: string,
     outputFormat: 'text' | 'json',
   ): Promise<AIRunTaskResponse> {
-    // Up to 3 attempts to ride out transient free-tier rate limits/hiccups,
-    // with a short backoff. The AI worker already does cross-model failover.
-    let lastErr: unknown
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      // Hard client-side deadline via Promise.race. AbortSignal isn't reliably
-      // honored on service-binding fetches, so even if the underlying request
-      // never cancels we stop awaiting it after the deadline and move on. The
-      // catch in runStep then marks the step failed and the run continues.
-      const ctl = new AbortController()
-      try {
-        const fetchP = (async () => {
-          const req = new Request('https://nexus-ai/task', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ taskType, prompt, outputFormat, timeoutMs: 60000 }),
-            signal: ctl.signal,
-          })
-          const res = await this.env.AI_WORKER.fetch(req)
-          if (!res.ok) {
-            const text = await res.text().catch(() => res.statusText)
-            throw new Error(`AI worker ${taskType} failed: ${res.status} ${text}`)
-          }
-          return (await res.json()) as AIRunTaskResponse
-        })()
-        const result = await Promise.race([
-          fetchP,
-          new Promise<never>((_, reject) =>
-            setTimeout(() => {
-              ctl.abort()
-              reject(new Error(`__deadline__ ${taskType}`))
-            }, 70000),
-          ),
-        ])
-        return result
-      } catch (err) {
-        lastErr = err
-        // A deadline means the engine is genuinely slow right now — retrying
-        // just burns another 70s, so stop and let the run continue.
-        if (err instanceof Error && err.message.startsWith('__deadline__')) break
-        if (attempt < 3) await new Promise((r) => setTimeout(r, 400 * attempt))
-      }
-    }
-    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr))
+    return sharedCallAI(this.env, prompt, { taskType, outputFormat })
   }
 
   // Persist AI outputs into the right tables so the review screen + listings
@@ -671,26 +630,4 @@ export class ProductWorkflow {
   }
 }
 
-// ------------------------------------------------------------
-// helpers
-// ------------------------------------------------------------
 
-function safeJson(raw: unknown): any {
-  if (typeof raw !== 'string') return raw
-  const trimmed = raw.trim()
-  if (!trimmed) return null
-  try {
-    return JSON.parse(trimmed)
-  } catch {
-    // Model sometimes wraps JSON in ```json ... ``` fences; strip and retry.
-    const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/)
-    if (fenced) {
-      try {
-        return JSON.parse(fenced[1])
-      } catch {
-        /* fall through */
-      }
-    }
-    return null
-  }
-}
