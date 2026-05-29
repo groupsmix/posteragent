@@ -100,7 +100,7 @@ export interface BrowserAction {
   fields?: Record<string, string>
 }
 
-export interface ActionResult {
+export interface BrowserActionResult {
   action: ActionType
   ok: boolean
   message?: string
@@ -110,7 +110,7 @@ export interface ActionResult {
 
 export interface ExecutionResult {
   ok: boolean
-  results: ActionResult[]
+  results: BrowserActionResult[]
   totalMs: number
   error?: string
 }
