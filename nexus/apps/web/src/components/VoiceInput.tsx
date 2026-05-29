@@ -40,10 +40,14 @@ export function VoiceInput({
   onTranscript,
   disabled,
   className = '',
+  label,
 }: {
   onTranscript: (text: string) => void
   disabled?: boolean
   className?: string
+  // When set, renders a wider button with this text next to the mic icon so
+  // the voice option is obvious instead of an easy-to-miss icon.
+  label?: string
 }) {
   const [supported, setSupported] = useState(false)
   const [listening, setListening] = useState(false)
@@ -91,6 +95,8 @@ export function VoiceInput({
 
   if (!supported) return null
 
+  const sizing = label ? 'h-9 gap-1.5 px-3 text-sm font-medium' : 'h-9 w-9 justify-center'
+
   return (
     <button
       type="button"
@@ -98,13 +104,14 @@ export function VoiceInput({
       disabled={disabled}
       title={listening ? 'Stop dictation' : 'Speak instead of typing'}
       aria-label={listening ? 'Stop dictation' : 'Speak instead of typing'}
-      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition disabled:opacity-50 ${
+      className={`inline-flex shrink-0 items-center rounded-lg border transition disabled:opacity-50 ${sizing} ${
         listening
           ? 'border-red-500 bg-red-500/10 text-red-500 animate-pulse'
           : 'border-border bg-card text-muted-foreground hover:text-foreground'
       } ${className}`}
     >
       {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+      {label && <span>{listening ? 'Listening…' : label}</span>}
     </button>
   )
 }

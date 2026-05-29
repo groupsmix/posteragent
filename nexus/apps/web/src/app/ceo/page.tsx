@@ -172,6 +172,7 @@ export default function CeoManagerPage() {
             />
             <VoiceInput
               disabled={busy}
+              label="Voice"
               onTranscript={(t) => setInput((prev) => (prev ? `${prev} ${t}` : t))}
             />
             <button
