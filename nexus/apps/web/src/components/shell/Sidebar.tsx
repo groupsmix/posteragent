@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutGrid, Workflow, ShieldCheck, Package, Skull, Send, Radar,
+  LayoutGrid, Workflow, ShieldCheck, Package, Skull, Send, Radar, Brain,
   Settings as SettingsIcon, Cpu, Globe2, Megaphone, FileCode, History,
   Bot, KeyRound, Users, CalendarClock, Rocket, LayoutDashboard, Plus, ChevronDown, DollarSign,
   Menu, X, Sunrise,
@@ -35,6 +35,7 @@ const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
     title: 'Intelligence',
     items: [
       { to: '/revenue', label: 'Revenue', icon: DollarSign },
+      { to: '/learning', label: 'Learning Loop', icon: Brain },
       { to: '/intelligence', label: 'Trends & winners', icon: Radar },
       { to: '/graveyard', label: 'Graveyard', icon: Skull },
       { to: '/history', label: 'Run history', icon: History },
