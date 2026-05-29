@@ -9,6 +9,7 @@ import type { AIRegistryEntry, TaskType, FailoverResult, FailoverOptions, AIStat
 
 interface Env {
   CONFIG: KVNamespace
+  AI?: { run(model: string, inputs: Record<string, unknown>): Promise<unknown> }
   SECRETS?: {
     get(key: string): Promise<string | null>
   }
@@ -28,11 +29,7 @@ export async function runWithFailover(
 ): Promise<FailoverResult> {
   const { timeoutMs = 90000, outputFormat = 'text' } = options
 
-  const models = AI_REGISTRY[taskType]
-  if (!models || models.length === 0) {
-    throw new Error(`No models registered for task type: ${taskType}`)
-  }
-
+  const models = AI_REGISTRY[taskType] || []
   const tried: string[] = []
 
   for (const model of models) {
@@ -129,6 +126,13 @@ export async function runWithFailover(
     }
   }
 
+  // No registry provider was available. Before falling back to offline
+  // templates, try the universal free/real providers: Groq (free tier, if a
+  // key is set) then Cloudflare Workers AI (free, no key). This keeps output
+  // real AI at zero cost whenever possible.
+  const universal = await tryUniversalProviders(prompt, env, outputFormat, timeoutMs, tried)
+  if (universal) return universal
+
   // No provider was available (or all failed). Rather than aborting the whole
   // workflow, fall back to the deterministic offline generator so the user
   // still gets a complete, reviewable product. Real providers take over the
@@ -149,6 +153,63 @@ export async function runWithFailover(
 // ============================================================
 // Model Callers
 // ============================================================
+
+// ============================================================
+// Universal free/real fallback providers
+// ============================================================
+// Used when no registry model has a usable key. Tries Groq (free tier) first,
+// then Cloudflare Workers AI (free, bound, no external key). Returns null if
+// neither produced output, so the caller can fall back to offline templates.
+async function tryUniversalProviders(
+  prompt: string,
+  env: Env,
+  outputFormat: string,
+  timeoutMs: number,
+  tried: string[]
+): Promise<FailoverResult | null> {
+  // 1. Groq — free tier, OpenAI-compatible. Only if a key is configured.
+  const groqKey = await getSecret(env, 'GROQ_API_KEY')
+  if (groqKey) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      tried.push('groq-llama-3.3-70b')
+      const result = await callOpenAICompatible(
+        'https://api.groq.com/openai/v1',
+        groqKey,
+        { apiModelName: 'llama-3.3-70b-versatile', costPer1MTokens: 0 } as AIRegistryEntry,
+        prompt,
+        outputFormat,
+        controller.signal
+      )
+      console.log('[NEXUS-AI] SUCCESS groq-llama-3.3-70b (universal fallback)')
+      return { output: result.output, model_used: 'groq-llama-3.3-70b', models_tried: tried, tokens_used: result.tokens_used, cost_usd: result.cost_usd }
+    } catch (error) {
+      console.log(`[NEXUS-AI] groq universal fallback failed: ${error instanceof Error ? error.message : 'error'}`)
+    } finally {
+      clearTimeout(timeout)
+    }
+  }
+
+  // 2. Cloudflare Workers AI — free, bound to the worker, no external key.
+  if (env.AI) {
+    try {
+      tried.push('cloudflare-workers-ai-llama')
+      const out = (await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 4096,
+      })) as { response?: string }
+      if (out?.response && out.response.trim()) {
+        console.log('[NEXUS-AI] SUCCESS cloudflare-workers-ai-llama (universal fallback)')
+        return { output: out.response, model_used: 'cloudflare-workers-ai-llama', models_tried: tried, tokens_used: 0, cost_usd: 0 }
+      }
+    } catch (error) {
+      console.log(`[NEXUS-AI] cloudflare workers-ai fallback failed: ${error instanceof Error ? error.message : 'error'}`)
+    }
+  }
+
+  return null
+}
 
 async function callModelWithTimeout(
   model: AIRegistryEntry,

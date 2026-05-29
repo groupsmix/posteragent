@@ -10,6 +10,7 @@ import type { TaskType, AIRunTaskRequest, AIRunTaskResponse } from './types'
 
 interface Env {
   CONFIG: KVNamespace
+  AI?: { run(model: string, inputs: Record<string, unknown>): Promise<unknown> }
   SECRETS?: {
     get: (key: string) => Promise<string | null>
   }
