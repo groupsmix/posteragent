@@ -1,6 +1,8 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
 import { ProductWorkflow } from '../services/workflow-engine'
+import { buildListingPayload } from './publish'
+import { publishToPlatform } from '../services/publishers'
 
 // ============================================================
 // Autopilot "money engine" — when ON, the CEO loops on its own:
@@ -42,6 +44,9 @@ async function log(env: Env, action: string, fields: { product_id?: string; nich
 autopilotRoutes.get('/status', async (c) => {
   const enabled = (await getSetting(c.env, 'autopilot_enabled')) === 'true'
   const perRun = Number((await getSetting(c.env, 'autopilot_per_run')) || '1') || 1
+  const autoApprove = (await getSetting(c.env, 'autopilot_auto_approve')) === 'true'
+  const autoPublish = (await getSetting(c.env, 'autopilot_auto_publish')) === 'true'
+  const minScore = Number((await getSetting(c.env, 'autopilot_min_score')) || '7') || 7
 
   const builtRow = await c.env.DB.prepare(
     `SELECT COUNT(*) AS n FROM autopilot_log WHERE action = 'build'`,
@@ -73,6 +78,9 @@ autopilotRoutes.get('/status', async (c) => {
   return c.json({
     enabled,
     per_run: perRun,
+    auto_approve: autoApprove,
+    auto_publish: autoPublish,
+    min_score: minScore,
     products_built: builtRow?.n ?? 0,
     est_revenue: { low: Math.round(estLow), high: Math.round(estHigh), currency: 'USD' },
     winners,
@@ -84,8 +92,13 @@ autopilotRoutes.get('/status', async (c) => {
 autopilotRoutes.post('/toggle', async (c) => {
   const b = await c.req.json().catch(() => ({})) as Record<string, unknown>
   if (typeof b.enabled === 'boolean') await setSetting(c.env, 'autopilot_enabled', b.enabled ? 'true' : 'false')
+  if (typeof b.auto_approve === 'boolean') await setSetting(c.env, 'autopilot_auto_approve', b.auto_approve ? 'true' : 'false')
+  if (typeof b.auto_publish === 'boolean') await setSetting(c.env, 'autopilot_auto_publish', b.auto_publish ? 'true' : 'false')
   if (typeof b.per_run === 'number' && b.per_run >= 1 && b.per_run <= 10) {
     await setSetting(c.env, 'autopilot_per_run', String(Math.floor(b.per_run)))
+  }
+  if (typeof b.min_score === 'number' && b.min_score >= 0 && b.min_score <= 10) {
+    await setSetting(c.env, 'autopilot_min_score', String(b.min_score))
   }
   const enabled = (await getSetting(c.env, 'autopilot_enabled')) === 'true'
   return c.json({ ok: true, enabled })
@@ -146,8 +159,60 @@ async function pickNiche(env: Env): Promise<{ domainSlug: string; categorySlug: 
   return { domainSlug, categorySlug: cat?.slug || 'templates', niche }
 }
 
+// Harvest finished autopilot products: auto-approve those scoring >= the
+// threshold, and (if enabled + a store token exists) attempt to list them.
+// Runs at the start of every cycle so each tick advances the prior batch.
+async function harvest(env: Env): Promise<void> {
+  if ((await getSetting(env, 'autopilot_auto_approve')) !== 'true') return
+  const minScore = Number((await getSetting(env, 'autopilot_min_score')) || '7') || 7
+  const autoPublish = (await getSetting(env, 'autopilot_auto_publish')) === 'true'
+
+  const rows = await env.DB.prepare(
+    `SELECT p.id, p.name, p.ai_score FROM products p
+       JOIN autopilot_log a ON a.product_id = p.id AND a.action = 'build'
+      WHERE p.status = 'pending_review' AND p.ai_score >= ?
+      GROUP BY p.id LIMIT 10`,
+  ).bind(minScore).all<{ id: string; name: string; ai_score: number }>().catch(() => ({ results: [] as { id: string; name: string; ai_score: number }[] }))
+
+  for (const p of rows.results ?? []) {
+    await env.DB.prepare('UPDATE products SET status = ?, updated_at = ? WHERE id = ?')
+      .bind('approved', new Date().toISOString(), p.id).run()
+    await log(env, 'approve', { product_id: p.id, note: `Auto-approved "${p.name}" (score ${p.ai_score})` })
+
+    if (!autoPublish) continue
+    const variants = await env.DB.prepare(
+      `SELECT pv.*, pl.url as platform_url, pl.name as platform_name
+         FROM platform_variants pv JOIN platforms pl ON pv.platform_id = pl.id
+        WHERE pv.product_id = ? AND pv.status != 'published'`,
+    ).bind(p.id).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+    let published = 0
+    const notes: string[] = []
+    for (const v of variants.results ?? []) {
+      try {
+        const outcome = await publishToPlatform(await buildListingPayload(env, v), env)
+        if (outcome.status === 'success') {
+          published++
+          await env.DB.prepare(`UPDATE platform_variants SET status='published', published_at=?, published_url=? WHERE id=?`)
+            .bind(new Date().toISOString(), outcome.url || '#', v.id).run()
+          notes.push(`${v.platform_name}: published`)
+        } else {
+          notes.push(`${v.platform_name}: ${outcome.error || 'failed'}`)
+        }
+      } catch (err) {
+        notes.push(`${v.platform_name}: ${err instanceof Error ? err.message : 'error'}`)
+      }
+    }
+    if (published > 0 && published === (variants.results ?? []).length) {
+      await env.DB.prepare(`UPDATE products SET status='published', updated_at=? WHERE id=?`)
+        .bind(new Date().toISOString(), p.id).run()
+    }
+    await log(env, 'publish', { product_id: p.id, note: `Publish "${p.name}": ${notes.join('; ') || 'no variants yet'}` })
+  }
+}
+
 // Build `count` products autonomously. Returns the number dispatched.
 export async function runCycle(env: Env, ctx: AutopilotExecCtx, count: number): Promise<number> {
+  await harvest(env)
   let built = 0
   for (let i = 0; i < count; i++) {
     const pick = await pickNiche(env)

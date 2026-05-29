@@ -141,6 +141,9 @@ export interface AutopilotLogEntry {
 export interface AutopilotStatus {
   enabled: boolean
   per_run: number
+  auto_approve: boolean
+  auto_publish: boolean
+  min_score: number
   products_built: number
   est_revenue: { low: number; high: number; currency: string }
   winners: AutopilotWinner[]
@@ -299,9 +302,9 @@ export const api = {
 
   // Autopilot money engine
   getAutopilot: () => apiFetch<AutopilotStatus>('/api/autopilot/status'),
-  toggleAutopilot: (enabled: boolean, perRun?: number) =>
+  toggleAutopilot: (patch: { enabled?: boolean; per_run?: number; auto_approve?: boolean; auto_publish?: boolean; min_score?: number }) =>
     apiFetch<{ ok: boolean; enabled: boolean }>('/api/autopilot/toggle', {
-      method: 'POST', body: JSON.stringify({ enabled, ...(perRun ? { per_run: perRun } : {}) }),
+      method: 'POST', body: JSON.stringify(patch),
     }),
   runAutopilot: () => apiFetch<{ ok: boolean; built: number }>('/api/autopilot/run', { method: 'POST' }),
 

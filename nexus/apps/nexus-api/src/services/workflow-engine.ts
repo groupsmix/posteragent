@@ -285,7 +285,9 @@ export class ProductWorkflow {
           `UPDATE workflow_runs SET current_step = ? WHERE id = ?`
         ).bind(group.map((g) => STEP_META[g.step.name]?.role || g.step.name).join(', '), runId).run()
 
-        await Promise.all(group.map(({ step, index }) => this.runStep(ctx, runId, step, index)))
+        // Run the wave in parallel but cap concurrency so a burst of
+        // simultaneous calls doesn't trip the free-tier rate limit.
+        await this.runWithConcurrency(group, 3, ({ step, index }) => this.runStep(ctx, runId, step, index))
       }
 
       // Generate the real hero image from the prompt (no-op if no image
@@ -324,6 +326,18 @@ export class ProductWorkflow {
         `UPDATE products SET status='rejected', updated_at=? WHERE id=?`
       ).bind(now(), productId).run()
     }
+  }
+
+  // Run `items` through `worker` with at most `limit` running at once.
+  private async runWithConcurrency<T>(items: T[], limit: number, worker: (item: T) => Promise<void>): Promise<void> {
+    let cursor = 0
+    const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (cursor < items.length) {
+        const item = items[cursor++]
+        await worker(item)
+      }
+    })
+    await Promise.all(runners)
   }
 
   // Run a single role/step: record start, call its specialized model (with
@@ -396,17 +410,28 @@ export class ProductWorkflow {
     prompt: string,
     outputFormat: 'text' | 'json',
   ): Promise<AIRunTaskResponse> {
-    const req = new Request('https://nexus-ai/task', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ taskType, prompt, outputFormat, timeoutMs: 90000 }),
-    })
-    const res = await this.env.AI_WORKER.fetch(req)
-    if (!res.ok) {
-      const text = await res.text().catch(() => res.statusText)
-      throw new Error(`AI worker ${taskType} failed: ${res.status} ${text}`)
+    // Up to 3 attempts to ride out transient free-tier rate limits/hiccups,
+    // with a short backoff. The AI worker already does cross-model failover.
+    let lastErr: unknown
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const req = new Request('https://nexus-ai/task', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ taskType, prompt, outputFormat, timeoutMs: 90000 }),
+        })
+        const res = await this.env.AI_WORKER.fetch(req)
+        if (!res.ok) {
+          const text = await res.text().catch(() => res.statusText)
+          throw new Error(`AI worker ${taskType} failed: ${res.status} ${text}`)
+        }
+        return (await res.json()) as AIRunTaskResponse
+      } catch (err) {
+        lastErr = err
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 400 * attempt))
+      }
     }
-    return (await res.json()) as AIRunTaskResponse
+    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr))
   }
 
   // Persist AI outputs into the right tables so the review screen + listings
