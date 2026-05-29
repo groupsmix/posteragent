@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutGrid, Workflow, ShieldCheck, Package, Skull, Send, Radar,
   Trophy, Settings as SettingsIcon, Cpu, Globe2, Megaphone, FileCode, History,
-  Bot, KeyRound, Users, CalendarClock, Rocket, LayoutDashboard, Plus, ChevronDown,
+  Bot, KeyRound, Users, CalendarClock, Rocket, LayoutDashboard, Plus, ChevronDown, DollarSign,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -31,6 +31,7 @@ const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
   {
     title: 'Intelligence',
     items: [
+      { to: '/revenue', label: 'Revenue', icon: DollarSign },
       { to: '/trends', label: 'Trend radar', icon: Radar },
       { to: '/winners', label: 'Winner patterns', icon: Trophy },
       { to: '/graveyard', label: 'Graveyard', icon: Skull },

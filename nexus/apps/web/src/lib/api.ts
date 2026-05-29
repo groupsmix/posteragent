@@ -158,6 +158,26 @@ export function assetUrl(path?: string | null): string | null {
   return `${API_BASE}${path}`
 }
 
+export interface RevenueProduct {
+  id: string
+  name: string
+  sales: number
+  revenue: number
+  url: string | null
+  published: boolean
+}
+export interface RevenueResponse {
+  configured: boolean
+  message?: string
+  error?: string
+  currency?: string
+  total_sales?: number
+  total_revenue?: number
+  product_count?: number
+  best_seller?: string | null
+  products?: RevenueProduct[]
+}
+
 const TOKEN_KEY = 'nexus_token'
 
 export function getToken(): string | null {
@@ -354,6 +374,9 @@ export const api = {
   // Publish
   getPublishQueue: () => apiFetch<{ items: any[] }>('/api/publish'),
   publishItem: (id: string) => apiFetch<void>(`/api/publish/${id}`, { method: 'POST' }),
+
+  // Revenue (real Gumroad sales)
+  getRevenue: () => apiFetch<RevenueResponse>('/api/revenue'),
 
   // Access gate
   getAuthStatus: () => apiFetch<{ protected: boolean }>('/api/auth/status'),
