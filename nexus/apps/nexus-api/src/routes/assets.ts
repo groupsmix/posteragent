@@ -41,6 +41,23 @@ assetRoutes.get('/', async (c) => {
   }
 })
 
+// GET /assets/r2/<key> - Serve raw bytes from R2 (e.g. generated hero images).
+// Registered before /:id so multi-segment keys resolve here.
+assetRoutes.get('/r2/:key{.+}', async (c) => {
+  try {
+    const key = c.req.param('key')
+    const obj = await c.env.ASSETS.get(key)
+    if (!obj) return c.json({ error: 'Not found' }, 404)
+    const headers = new Headers()
+    headers.set('Content-Type', obj.httpMetadata?.contentType || 'application/octet-stream')
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+    return new Response(obj.body, { headers })
+  } catch (err) {
+    console.error('Error serving R2 asset:', err)
+    return c.json({ error: 'Failed to serve asset' }, 500)
+  }
+})
+
 // GET /assets/:id - Get asset
 assetRoutes.get('/:id', async (c) => {
   try {

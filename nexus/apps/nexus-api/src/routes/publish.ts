@@ -1,6 +1,33 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
 import type { PublishRequest, PublishResult } from '../types'
+import { publishToPlatform, postToSocial, type ListingPayload } from '../services/publishers'
+
+// Build the listing payload for a variant, preferring variant-specific copy
+// and falling back to the product's master content.
+async function buildListingPayload(
+  env: Env,
+  variant: Record<string, unknown>,
+): Promise<ListingPayload> {
+  const product = (await env.DB.prepare(
+    `SELECT name, description, tags, price, currency, image_url FROM products WHERE id = ?`,
+  )
+    .bind(variant.product_id)
+    .first()) as Record<string, unknown> | null
+
+  const tagsRaw = (variant.tags as string) || (product?.tags as string) || ''
+  return {
+    productId: variant.product_id as string,
+    platformSlug: (variant.platform_slug as string) || '',
+    platformName: (variant.platform_name as string) || (variant.platform_slug as string) || '',
+    title: (variant.title as string) || (product?.name as string) || 'Untitled',
+    description: (variant.description as string) || (product?.description as string) || '',
+    tags: tagsRaw ? tagsRaw.split(',').map((t) => t.trim()).filter(Boolean) : [],
+    price: (variant.price as number) ?? (product?.price as number) ?? null,
+    currency: (variant.currency as string) || (product?.currency as string) || 'USD',
+    imageUrl: (product?.image_url as string) || null,
+  }
+}
 
 export const publishRoutes = new Hono<{ Bindings: Env }>()
 
@@ -45,11 +72,11 @@ publishRoutes.post('/', async (c) => {
     for (const platformId of body.platform_ids) {
       // Fetch platform variant for this product and platform
       const variant = await c.env.DB.prepare(`
-        SELECT pv.*, pl.name as platform_name, pl.url as platform_url
+        SELECT pv.*, pl.name as platform_name, pl.url as platform_url, pl.slug as platform_slug
         FROM platform_variants pv
         JOIN platforms pl ON pv.platform_id = pl.id
         WHERE pv.product_id = ? AND pv.platform_id = ?
-      `).bind(body.product_id, platformId).first()
+      `).bind(body.product_id, platformId).first() as Record<string, unknown> | null
       
       if (!variant) {
         result.published.push({
@@ -61,19 +88,32 @@ publishRoutes.post('/', async (c) => {
         })
         continue
       }
-      
-      // Update variant status to published
+
+      // Call the real platform API.
+      const payload = await buildListingPayload(c.env, variant)
+      const outcome = await publishToPlatform(payload, c.env)
+
+      if (outcome.status !== 'success') {
+        result.published.push({
+          platform_id: platformId,
+          platform_name: variant.platform_name as string,
+          url: '',
+          status: 'failed',
+          error: outcome.error,
+        })
+        continue
+      }
+
       const now = new Date().toISOString()
+      const publishedUrl = outcome.url || `${variant.platform_url || '#'}/${variant.id}`
       await c.env.DB.prepare(`
-        UPDATE platform_variants SET status = 'published', published_at = ? WHERE id = ?
-      `).bind(now, variant.id).run()
-      
-      // TODO: Integrate with actual platform publishing APIs
-      // For now, simulate successful publish
+        UPDATE platform_variants SET status = 'published', published_at = ?, published_url = ? WHERE id = ?
+      `).bind(now, publishedUrl, variant.id).run()
+
       result.published.push({
         platform_id: platformId,
         platform_name: variant.platform_name as string,
-        url: `${variant.platform_url || '#'}/${variant.id}`,
+        url: publishedUrl,
         status: 'success',
       })
     }
@@ -137,7 +177,7 @@ publishRoutes.post('/:id', async (c) => {
     const id = c.req.param('id')
 
     const variant = await c.env.DB.prepare(`
-      SELECT pv.*, pl.url as platform_url
+      SELECT pv.*, pl.url as platform_url, pl.slug as platform_slug, pl.name as platform_name
       FROM platform_variants pv
       JOIN platforms pl ON pv.platform_id = pl.id
       WHERE pv.id = ?
@@ -148,9 +188,17 @@ publishRoutes.post('/:id', async (c) => {
     }
 
     const now = new Date().toISOString()
-    const publishedUrl = `${variant.platform_url || '#'}/${variant.id}`
 
-    // TODO: Integrate with actual platform publishing APIs.
+    // Call the real platform API. On failure we surface the error and do NOT
+    // mark the variant as published.
+    const payload = await buildListingPayload(c.env, variant)
+    const outcome = await publishToPlatform(payload, c.env)
+
+    if (outcome.status !== 'success') {
+      return c.json({ id, status: 'failed', error: outcome.error }, 422)
+    }
+
+    const publishedUrl = outcome.url || `${variant.platform_url || '#'}/${variant.id}`
     await c.env.DB.prepare(`
       UPDATE platform_variants SET status = 'published', published_at = ?, published_url = ? WHERE id = ?
     `).bind(now, publishedUrl, id).run()
@@ -199,5 +247,49 @@ publishRoutes.get('/:productId', async (c) => {
   } catch (err) {
     console.error('Error fetching publish status:', err)
     return c.json({ error: 'Failed to fetch publish status' }, 500)
+  }
+})
+
+// POST /publish/social/:id - Post a single social variant to its channel for real
+publishRoutes.post('/social/:id', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const variant = await c.env.DB.prepare(`
+      SELECT sv.*, sc.slug as channel_slug, sc.name as channel_name
+      FROM social_variants sv
+      JOIN social_channels sc ON sv.channel_id = sc.id
+      WHERE sv.id = ?
+    `).bind(id).first() as any
+
+    if (!variant) return c.json({ error: 'Social variant not found' }, 404)
+
+    const product = await c.env.DB.prepare(
+      `SELECT image_url FROM products WHERE id = ?`,
+    ).bind(variant.product_id).first() as { image_url?: string } | null
+
+    const outcome = await postToSocial(
+      {
+        productId: variant.product_id,
+        channelSlug: variant.channel_slug,
+        channelName: variant.channel_name,
+        content: variant.content,
+        imageUrl: product?.image_url || null,
+      },
+      c.env,
+    )
+
+    if (outcome.status !== 'success') {
+      return c.json({ id, status: 'failed', error: outcome.error }, 422)
+    }
+
+    const now = new Date().toISOString()
+    await c.env.DB.prepare(
+      `UPDATE social_variants SET status = 'published', published_at = ? WHERE id = ?`,
+    ).bind(now, id).run()
+
+    return c.json({ id, status: 'published', url: outcome.url })
+  } catch (err) {
+    console.error('Error posting social variant:', err)
+    return c.json({ error: 'Failed to post social variant' }, 500)
   }
 })

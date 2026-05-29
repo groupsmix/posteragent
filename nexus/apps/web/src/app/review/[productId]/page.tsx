@@ -5,7 +5,7 @@ export const runtime = 'edge'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { api } from '@/lib/api'
+import { api, assetUrl } from '@/lib/api'
 import type { ProductDetail } from '@nexus/types'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 import { ScoreBar } from '@/components/shared/ScoreBar'
@@ -64,6 +64,18 @@ export default function ReviewPage() {
         subtitle={<span>{p.domain_name} → {p.category_name}</span>}
         actions={
           <div className="flex items-center gap-3">
+            {p.generated_offline ? (
+              <span
+                title="At least one step used the offline template fallback. Add an AI provider key for fully real content."
+                className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 dark:text-amber-400"
+              >
+                Draft (offline)
+              </span>
+            ) : (
+              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                Real AI
+              </span>
+            )}
             <StatusBadge status={p.status} />
             <div className="rounded-full border border-border bg-card px-3 py-1.5 text-sm">
               AI score{' '}
@@ -78,6 +90,17 @@ export default function ReviewPage() {
       <PageBody>
         <div className="grid lg:grid-cols-[1fr_340px] gap-6">
           <div className="space-y-5">
+            {p.image_url && (
+              <Section title="Hero image">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={assetUrl(p.image_url) ?? ''}
+                  alt={p.name ?? 'Generated hero image'}
+                  className="w-full max-w-md rounded-xl border border-border"
+                />
+              </Section>
+            )}
+
             <Section
               title="Title"
               actions={
