@@ -6,45 +6,45 @@ import { usePathname } from 'next/navigation'
 import {
   Package, ShieldCheck,
   Settings as SettingsIcon, Globe2, Megaphone, History,
-  Bot, KeyRound, CalendarClock, Rocket, LayoutDashboard, ChevronDown, DollarSign,
-  Menu, X, Radar, LayoutGrid, Workflow, Brain, Sunrise, Shirt,
+  Bot, CalendarClock, Rocket, LayoutDashboard, ChevronDown, DollarSign,
+  Menu, X, LayoutGrid, Workflow, Brain, Sunrise, Shirt,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Item = { to: string; label: string; icon: React.ComponentType<{ className?: string }> }
 
-const home: Item = { to: '/', label: 'Home', icon: LayoutDashboard }
-const digest: Item = { to: '/digest', label: 'Digest', icon: Sunrise }
+const topItems: Item[] = [
+  { to: '/', label: 'Home', icon: LayoutDashboard },
+  { to: '/ceo', label: 'AI Assistant', icon: Bot },
+]
 
 const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
   {
-    title: 'Work',
+    title: 'Build',
     items: [
       { to: '/products', label: 'Products', icon: Package },
-      { to: '/ceo', label: 'AI Assistant', icon: Bot },
       { to: '/review', label: 'Review', icon: ShieldCheck },
       { to: '/pod', label: 'Print on Demand', icon: Shirt },
+      { to: '/autopilot', label: 'Autopilot', icon: Rocket },
     ],
   },
   {
-    title: 'Grow',
+    title: 'Money',
     items: [
       { to: '/revenue', label: 'Revenue', icon: DollarSign },
       { to: '/learning', label: 'Learning Loop', icon: Brain },
       { to: '/marketing', label: 'Marketing', icon: Megaphone },
-      { to: '/autopilot', label: 'Autopilot', icon: Rocket },
     ],
   },
   {
     title: 'System',
     collapsible: true,
     items: [
+      { to: '/digest', label: 'Digest', icon: Sunrise },
       { to: '/platforms', label: 'Platforms', icon: Globe2 },
-      { to: '/intelligence', label: 'Intelligence', icon: Radar },
       { to: '/schedules', label: 'Schedules', icon: CalendarClock },
       { to: '/history', label: 'History', icon: History },
       { to: '/settings', label: 'Settings', icon: SettingsIcon },
-      { to: '/settings/keys', label: 'API Keys', icon: KeyRound },
       { to: '/manager/domains', label: 'Domains', icon: LayoutGrid },
     ],
   },
@@ -98,7 +98,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-      <ul className="space-y-0.5">{renderItem(home)}{renderItem(digest)}</ul>
+      <ul className="space-y-0.5">{topItems.map(renderItem)}</ul>
       {sections.map((sec) => (
         <div key={sec.title}>
           {sec.collapsible ? (
