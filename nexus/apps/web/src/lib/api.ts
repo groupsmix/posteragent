@@ -216,6 +216,18 @@ export interface RevenueResponse {
   products?: RevenueProduct[]
 }
 
+export interface DigestScheduleRun {
+  name: string
+  status: string
+  ran_at: string
+}
+
+export interface DigestError {
+  product_name: string | null
+  failed_step: string | null
+  created_at: string
+}
+
 export interface Digest {
   date: string
   built_24h: number
@@ -229,6 +241,19 @@ export interface Digest {
   total_revenue: number
   best_seller: string | null
   recent: { name: string; created_at: string }[]
+  schedules_ran: number
+  schedules_succeeded: number
+  schedules_failed: number
+  schedule_runs: DigestScheduleRun[]
+  errors: DigestError[]
+  top_product: string | null
+}
+
+export interface DigestRecord {
+  id: string
+  date: string
+  data: Digest
+  created_at: string
 }
 
 export interface HistoryRun {
@@ -483,6 +508,14 @@ export const api = {
 
   // Daily digest / morning report
   getDigest: () => apiFetch<Digest>('/api/digest'),
+  getDigestToday: () => apiFetch<Digest>('/api/digest/today'),
+  getDigestHistory: () => apiFetch<{ digests: DigestRecord[] }>('/api/digest/history'),
+  generateDigest: () => apiFetch<{ ok: boolean; digest: Digest }>('/api/digest/generate', { method: 'POST' }),
+  sendDigestEmail: (to?: string) =>
+    apiFetch<{ ok: boolean; status: string; digest: Digest }>('/api/digest/email', {
+      method: 'POST',
+      body: JSON.stringify(to ? { to } : {}),
+    }),
 
   // Access gate
   getAuthStatus: () => apiFetch<{ protected: boolean }>('/api/auth/status'),

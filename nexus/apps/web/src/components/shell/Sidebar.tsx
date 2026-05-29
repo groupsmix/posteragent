@@ -7,13 +7,14 @@ import {
   LayoutGrid, Workflow, ShieldCheck, Package, Skull, Send, Radar,
   Settings as SettingsIcon, Cpu, Globe2, Megaphone, FileCode, History,
   Bot, KeyRound, Users, CalendarClock, Rocket, LayoutDashboard, Plus, ChevronDown, DollarSign,
-  Menu, X,
+  Menu, X, Sunrise,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Item = { to: string; label: string; icon: React.ComponentType<{ className?: string }> }
 
 const home: Item = { to: '/', label: 'Home', icon: LayoutDashboard }
+const digest: Item = { to: '/digest', label: 'Digest', icon: Sunrise }
 
 const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
   {
@@ -99,7 +100,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-6">
-      <ul className="space-y-0.5">{renderItem(home)}</ul>
+      <ul className="space-y-0.5">{renderItem(home)}{renderItem(digest)}</ul>
       {sections.map((sec) => (
         <div key={sec.title}>
           {sec.collapsible ? (
