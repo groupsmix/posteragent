@@ -2,26 +2,39 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Bot, Send, Loader2, CheckCircle2, XCircle, ExternalLink } from 'lucide-react'
-import { api, type ManagerMessage, type ManagerAction } from '@/lib/api'
+import { Bot, Send, Loader2, CheckCircle2, XCircle, ExternalLink, Wrench } from 'lucide-react'
+import { api, type ManagerMessage, type AgentStep } from '@/lib/api'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
 interface ChatTurn extends ManagerMessage {
-  actions?: ManagerAction[]
+  steps?: AgentStep[]
 }
 
 const SUGGESTIONS = [
-  'Create 3 digital products for my best domain',
-  'Research a trending niche and build a product for it',
-  'Make a planner product and price it for me',
+  'How many products do I have and what needs review?',
+  'Create 2 digital products for my best domain',
+  'Approve the highest-scoring product, then publish it',
+  'Which API keys are configured?',
 ]
+
+const TOOL_LABELS: Record<string, string> = {
+  list_products: 'Looked up products',
+  create_product: 'Dispatched product agent',
+  create_products: 'Created products',
+  run_workflow: 'Ran the agent team',
+  approve_product: 'Approved',
+  reject_product: 'Rejected',
+  delete_product: 'Deleted',
+  publish_product: 'Published',
+  key_status: 'Checked API keys',
+}
 
 export default function CeoManagerPage() {
   const [turns, setTurns] = useState<ChatTurn[]>([
     {
       role: 'assistant',
       content:
-        "Hi — I'm your CEO Manager. Tell me a goal (e.g. \"create 3 products for my store\") and I'll plan it and put the product agents to work. You can watch them appear on the Products page.",
+        "Hi — I'm your CEO. I have full control of NEXUS: I can check your numbers, build products with the agent team, approve/reject, publish, and delete. Tell me what you want done and I'll do it.",
     },
   ])
   const [input, setInput] = useState('')
@@ -40,8 +53,8 @@ export default function CeoManagerPage() {
     setInput('')
     setBusy(true)
     try {
-      const res = await api.managerChat(message, history)
-      setTurns((prev) => [...prev, { role: 'assistant', content: res.reply, actions: res.actions }])
+      const res = await api.managerAgent(message, history)
+      setTurns((prev) => [...prev, { role: 'assistant', content: res.reply, steps: res.steps }])
     } catch {
       setTurns((prev) => [
         ...prev,
@@ -55,8 +68,8 @@ export default function CeoManagerPage() {
   return (
     <>
       <PageHeader
-        title={<span className="flex items-center gap-2"><Bot className="h-6 w-6" /> CEO Manager</span>}
-        subtitle="Talk to your manager. Give it goals; it splits the work and runs the product agents."
+        title={<span className="flex items-center gap-2"><Bot className="h-6 w-6" /> CEO</span>}
+        subtitle="Your AI chief of staff with full control. Talk to it; it runs the agents and takes action."
       />
       <PageBody>
         <div className="mx-auto flex h-[calc(100vh-220px)] max-w-3xl flex-col">
@@ -71,26 +84,25 @@ export default function CeoManagerPage() {
                   }
                 >
                   <p className="whitespace-pre-wrap">{t.content}</p>
-                  {t.actions && t.actions.length > 0 && (
+                  {t.steps && t.steps.length > 0 && (
                     <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
-                      {t.actions.map((a, j) => (
-                        <div key={j} className="flex items-center gap-2 text-xs">
-                          {a.status === 'started' ? (
-                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                      {t.steps.map((s, j) => (
+                        <div key={j} className="flex items-start gap-2 text-xs">
+                          {s.ok ? (
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                           ) : (
-                            <XCircle className="h-4 w-4 shrink-0 text-red-500" />
+                            <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
                           )}
                           <span className="flex-1">
-                            <span className="font-medium">{a.product_name || 'Product'}</span>
-                            {a.niche ? <span className="text-muted-foreground"> · {a.niche}</span> : null}
-                            {a.status === 'failed' && a.detail ? (
-                              <span className="block text-muted-foreground">{a.detail}</span>
-                            ) : null}
+                            <span className="inline-flex items-center gap-1 font-medium">
+                              <Wrench className="h-3 w-3" /> {TOOL_LABELS[s.tool] || s.tool}
+                            </span>
+                            <span className="block text-muted-foreground">{s.summary}</span>
                           </span>
-                          {a.status === 'started' && a.product_id && (
+                          {s.product_id && (
                             <Link
-                              href={`/review/${a.product_id}`}
-                              className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                              href={`/review/${s.product_id}`}
+                              className="inline-flex shrink-0 items-center gap-1 text-muted-foreground hover:text-foreground"
                             >
                               View <ExternalLink className="h-3 w-3" />
                             </Link>
@@ -105,7 +117,7 @@ export default function CeoManagerPage() {
             {busy && (
               <div className="flex justify-start">
                 <div className="inline-flex items-center gap-2 rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Planning &amp; dispatching agents…
+                  <Loader2 className="h-4 w-4 animate-spin" /> Thinking &amp; taking action…
                 </div>
               </div>
             )}
@@ -136,7 +148,7 @@ export default function CeoManagerPage() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Give your manager a goal…"
+              placeholder="Tell your CEO what to do…"
               className="input flex-1"
               disabled={busy}
             />

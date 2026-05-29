@@ -42,6 +42,19 @@ export interface ManagerReply {
   actions: ManagerAction[]
 }
 
+export interface AgentStep {
+  tool: string
+  args: Record<string, unknown>
+  ok: boolean
+  summary: string
+  product_id?: string
+}
+
+export interface AgentReply {
+  reply: string
+  steps: AgentStep[]
+}
+
 // Resolve an API-relative asset path (e.g. /api/assets/r2/...) to an absolute
 // URL the browser can load. Absolute URLs are returned unchanged.
 export function assetUrl(path?: string | null): string | null {
@@ -166,6 +179,13 @@ export const api = {
   // CEO Manager (chat orchestrator)
   managerChat: (message: string, history: ManagerMessage[]) =>
     apiFetch<ManagerReply>('/api/manager/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, history }),
+    }),
+
+  // CEO Agent (full-control, tool-using)
+  managerAgent: (message: string, history: ManagerMessage[]) =>
+    apiFetch<AgentReply>('/api/manager/agent', {
       method: 'POST',
       body: JSON.stringify({ message, history }),
     }),
