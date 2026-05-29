@@ -49,7 +49,7 @@ export function WinnersView() {
               <span className="text-xs text-muted-foreground">
                 Detected in {pattern.detection_count || 0} products
               </span>
-              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+              <span className="px-2 py-1 bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300 text-xs rounded-full">
                 {pattern.success_rate || 0}% success
               </span>
             </div>
