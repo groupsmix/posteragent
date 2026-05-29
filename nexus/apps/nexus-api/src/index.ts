@@ -29,6 +29,7 @@ import { authRoutes, getAccessHash } from './routes/auth'
 import { revenueRoutes } from './routes/revenue'
 import { marketingRoutes, runMarketing } from './routes/marketing'
 import { browserRoutes } from './routes/browser'
+import { backfillDeliverables } from './services/deliverable'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -137,6 +138,7 @@ export default {
     ctx.waitUntil(runDueSchedules(env, ctx))
     ctx.waitUntil(runAutopilot(env, ctx))
     ctx.waitUntil(runMarketing(env, ctx))
+    ctx.waitUntil(backfillDeliverables(env))
   },
 }
 

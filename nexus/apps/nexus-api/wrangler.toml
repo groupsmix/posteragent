@@ -46,6 +46,12 @@ binding = "IMAGES"
 binding = "AI_WORKER"
 service = "nexus-ai"
 
+# Self-binding: lets a finished workflow kick off deliverable generation in a
+# fresh invocation with its own time budget (avoids extending the long run).
+[[services]]
+binding = "SELF"
+service = "nexus-api"
+
 # ================================
 # BROWSER RENDERING (headless browser — requires Workers Paid plan)
 # ================================

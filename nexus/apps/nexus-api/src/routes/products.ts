@@ -2,8 +2,24 @@ import { Hono } from 'hono'
 import type { Env } from '../env'
 import type { ProductFilters } from '../types'
 import { buildZip } from '../services/zip'
+import { generateDeliverableForProduct } from '../services/deliverable'
 
 export const productRoutes = new Hono<{ Bindings: Env }>()
+
+// POST /products/:id/generate-deliverable - Build (or rebuild) the real
+// downloadable PDF the buyer gets. Invoked by the dashboard "Generate
+// deliverable" button and self-invoked by a finished workflow run. Runs in
+// its own request so it gets a full time budget for the AI call + PDF render.
+productRoutes.post('/:id/generate-deliverable', async (c) => {
+  const productId = c.req.param('id')
+  const force = c.req.query('force') === '1'
+  if (!c.env.BROWSER) {
+    return c.json({ error: 'Browser Rendering not enabled', code: 'no_browser' }, 400)
+  }
+  const result = await generateDeliverableForProduct(c.env, productId, { force })
+  if (!result) return c.json({ error: 'Could not generate deliverable' }, 422)
+  return c.json({ ok: true, deliverable_url: result.url, deliverable_format: result.format })
+})
 
 // GET /products/:id/deliverable - Download the finished product as a ZIP
 // (product brief markdown + tags + hero image when present).
@@ -60,16 +76,37 @@ productRoutes.get('/:id/deliverable', async (c) => {
     }
     if (!r2Key) {
       const asset = await c.env.DB.prepare(
-        `SELECT r2_key FROM assets WHERE product_id = ? AND r2_key IS NOT NULL LIMIT 1`
+        `SELECT r2_key FROM assets
+          WHERE product_id = ? AND r2_key IS NOT NULL
+            AND COALESCE(asset_type,'') != 'deliverable_pdf'
+          LIMIT 1`
       ).bind(productId).first<any>()
       r2Key = asset?.r2_key ?? null
     }
-    if (r2Key) {
+    if (r2Key && !r2Key.endsWith('.pdf')) {
       const obj = await c.env.ASSETS.get(r2Key)
       if (obj) {
         const bytes = new Uint8Array(await obj.arrayBuffer())
         const ext = r2Key.endsWith('.png') ? 'png' : 'jpg'
         files.push({ name: `${slug}/hero-image.${ext}`, data: bytes })
+      }
+    }
+
+    // Attach the real deliverable PDF (the file the buyer actually gets).
+    let pdfKey: string | null = null
+    if (typeof product.deliverable_url === 'string' && product.deliverable_url.includes('/assets/r2/')) {
+      pdfKey = product.deliverable_url.split('/assets/r2/')[1] || null
+    }
+    if (!pdfKey) {
+      const asset = await c.env.DB.prepare(
+        `SELECT r2_key FROM assets WHERE product_id = ? AND asset_type = 'deliverable_pdf' AND r2_key IS NOT NULL LIMIT 1`
+      ).bind(productId).first<any>()
+      pdfKey = asset?.r2_key ?? null
+    }
+    if (pdfKey) {
+      const obj = await c.env.ASSETS.get(pdfKey)
+      if (obj) {
+        files.push({ name: `${slug}/${slug}.pdf`, data: new Uint8Array(await obj.arrayBuffer()) })
       }
     }
 

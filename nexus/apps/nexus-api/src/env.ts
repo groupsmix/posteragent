@@ -18,6 +18,10 @@ export interface Env {
   // Service binding to AI worker
   AI_WORKER: Fetcher
 
+  // Service binding to this same worker — lets a long workflow run kick off a
+  // fresh invocation (e.g. deliverable generation) with its own time budget.
+  SELF?: Fetcher
+
   // Browser Rendering binding (headless Chromium — Workers Paid plan).
   // Optional so local/free environments without it still type-check and run.
   BROWSER?: BrowserWorker
