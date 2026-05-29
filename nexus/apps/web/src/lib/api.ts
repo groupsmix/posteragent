@@ -150,6 +150,23 @@ export interface AutopilotStatus {
   recent: AutopilotLogEntry[]
 }
 
+export interface MarketingLogEntry {
+  channel: string | null
+  content: string | null
+  status: string
+  note: string | null
+  created_at: string
+  product_name?: string | null
+}
+export interface MarketingStatus {
+  enabled: boolean
+  per_run: number
+  delivery_configured: boolean
+  promotions_sent: number
+  channels: { slug: string; name: string }[]
+  recent: MarketingLogEntry[]
+}
+
 // Resolve an API-relative asset path (e.g. /api/assets/r2/...) to an absolute
 // URL the browser can load. Absolute URLs are returned unchanged.
 export function assetUrl(path?: string | null): string | null {
@@ -363,6 +380,15 @@ export const api = {
       method: 'POST', body: JSON.stringify(patch),
     }),
   runAutopilot: () => apiFetch<{ ok: boolean; built: number }>('/api/autopilot/run', { method: 'POST' }),
+
+  // Marketing team
+  getMarketing: () => apiFetch<MarketingStatus>('/api/marketing/status'),
+  toggleMarketing: (patch: { enabled?: boolean; per_run?: number }) =>
+    apiFetch<{ ok: boolean; enabled: boolean }>('/api/marketing/toggle', {
+      method: 'POST',
+      body: JSON.stringify(patch),
+    }),
+  runMarketing: () => apiFetch<{ ok: boolean; promoted: number }>('/api/marketing/run', { method: 'POST' }),
 
   // Graveyard
   getGraveyard: () => apiFetch<{ products: Product[] }>('/api/graveyard'),
