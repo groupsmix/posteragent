@@ -3,6 +3,7 @@ import type { Env } from '../env'
 import { ProductWorkflow } from '../services/workflow-engine'
 import { buildListingPayload } from './publish'
 import { publishToPlatform } from '../services/publishers'
+import { browse } from '../services/browser'
 
 // ============================================================
 // CEO Agent — a conversational, tool-using manager with full control.
@@ -24,6 +25,7 @@ interface AgentStep {
   ok: boolean
   summary: string
   product_id?: string
+  screenshot_url?: string
 }
 
 const MAX_TURNS = 6
@@ -262,6 +264,7 @@ TOOLS:
 - {"tool":"delete_product","args":{"product":"<ref>"}}
 - {"tool":"publish_product","args":{"product":"<ref>"}}
 - {"tool":"key_status","args":{}}  // which provider API keys are configured
+- {"tool":"browse_web","args":{"url":"https://...","instruction":"<what to find on the page>"}}  // open a real web page in a headless browser, read it, and screenshot it
 
 When you have enough to answer, respond with: {"reply":"<your message to the owner>"}
 
@@ -348,6 +351,27 @@ Respond with ONLY one JSON object (a tool call or a final {"reply"}).`
         const summary = await getKeyStatus(c.env)
         steps.push({ tool, args, ok: true, summary })
         scratch.push(`key_status → ${summary}`)
+        continue
+      }
+
+      if (tool === 'browse_web') {
+        const url = typeof args.url === 'string' ? args.url : ''
+        const instruction = typeof args.instruction === 'string' ? args.instruction : ''
+        if (!url) {
+          steps.push({ tool, args, ok: false, summary: 'No URL given to browse.' })
+          scratch.push('browse_web → no url')
+          continue
+        }
+        const r = await browse(c.env, url)
+        if (!r.ok) {
+          steps.push({ tool, args, ok: false, summary: `Could not open ${url}: ${r.error}` })
+          scratch.push(`browse_web → failed: ${r.error}`)
+          continue
+        }
+        const screenshotUrl = r.screenshotKey ? `/api/assets/r2/${r.screenshotKey}` : undefined
+        const snippet = (r.text || '').slice(0, 4000)
+        steps.push({ tool, args, ok: true, summary: `Opened ${r.title || url} and captured a screenshot.`, screenshot_url: screenshotUrl })
+        scratch.push(`browse_web ${url}${instruction ? ` (goal: ${instruction})` : ''} → title: "${r.title || ''}"; page text: ${snippet || '(empty)'}`)
         continue
       }
 

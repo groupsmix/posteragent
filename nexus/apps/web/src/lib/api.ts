@@ -48,6 +48,18 @@ export interface AgentStep {
   ok: boolean
   summary: string
   product_id?: string
+  screenshot_url?: string
+}
+
+export interface BrowseResult {
+  ok: boolean
+  url: string
+  finalUrl?: string
+  title?: string
+  summary?: string | null
+  text?: string
+  screenshotUrl?: string | null
+  error?: string
 }
 
 export interface AgentReply {
@@ -359,6 +371,14 @@ export const api = {
     apiFetch<AgentReply>('/api/manager/agent', {
       method: 'POST',
       body: JSON.stringify({ message, history }),
+    }),
+
+  // Browser automation (headless browser on the Workers Paid plan)
+  browserStatus: () => apiFetch<{ enabled: boolean }>('/api/browser/status'),
+  browserRun: (url: string, instruction?: string) =>
+    apiFetch<BrowseResult>('/api/browser/run', {
+      method: 'POST',
+      body: JSON.stringify({ url, instruction }),
     }),
 
   // AI agent team line-up

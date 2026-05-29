@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Bot, Send, Loader2, CheckCircle2, XCircle, ExternalLink, Wrench } from 'lucide-react'
-import { api, type ManagerMessage, type AgentStep } from '@/lib/api'
+import { api, API_BASE, type ManagerMessage, type AgentStep } from '@/lib/api'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 import { Markdown } from '@/components/Markdown'
 import { VoiceInput } from '@/components/VoiceInput'
@@ -29,6 +29,7 @@ const TOOL_LABELS: Record<string, string> = {
   delete_product: 'Deleted',
   publish_product: 'Published',
   key_status: 'Checked API keys',
+  browse_web: 'Browsed the web',
 }
 
 export default function CeoManagerPage() {
@@ -105,6 +106,16 @@ export default function CeoManagerPage() {
                               <Wrench className="h-3 w-3" /> {TOOL_LABELS[s.tool] || s.tool}
                             </span>
                             <span className="mt-0.5 block text-muted-foreground">{s.summary}</span>
+                            {s.screenshot_url && (
+                              <a href={`${API_BASE}${s.screenshot_url}`} target="_blank" rel="noreferrer" className="mt-2 block">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={`${API_BASE}${s.screenshot_url}`}
+                                  alt="Page screenshot"
+                                  className="max-h-48 w-full rounded-md border border-border object-cover object-top"
+                                />
+                              </a>
+                            )}
                           </span>
                           {s.product_id && (
                             <Link

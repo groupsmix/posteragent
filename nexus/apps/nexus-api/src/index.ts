@@ -28,6 +28,7 @@ import { autopilotRoutes, runAutopilot } from './routes/autopilot'
 import { authRoutes, getAccessHash } from './routes/auth'
 import { revenueRoutes } from './routes/revenue'
 import { marketingRoutes, runMarketing } from './routes/marketing'
+import { browserRoutes } from './routes/browser'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -103,6 +104,7 @@ api.route('/schedules', scheduleRoutes)
 api.route('/autopilot', autopilotRoutes)
 api.route('/revenue', revenueRoutes)
 api.route('/marketing', marketingRoutes)
+api.route('/browser', browserRoutes)
 
 // Mount API routes under /api
 app.route('/api', api)

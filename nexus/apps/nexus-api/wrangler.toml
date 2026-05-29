@@ -47,6 +47,12 @@ binding = "AI_WORKER"
 service = "nexus-ai"
 
 # ================================
+# BROWSER RENDERING (headless browser — requires Workers Paid plan)
+# ================================
+[browser]
+binding = "BROWSER"
+
+# ================================
 # SECRETS STORE (optional — worker falls back to plain secrets)
 # ================================
 # Uncomment and set store_id after creating a Cloudflare Secrets Store.
