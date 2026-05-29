@@ -3,8 +3,36 @@ import type { Env } from '../env'
 import type { ProductFilters } from '../types'
 import { buildZip } from '../services/zip'
 import { generateDeliverableForProduct } from '../services/deliverable'
+import { RECIPE_OPTIONS, getRecipe } from '../services/recipes'
 
 export const productRoutes = new Hono<{ Bindings: Env }>()
+
+// GET /products/formats - List available deliverable format recipes.
+productRoutes.get('/formats', (c) => {
+  return c.json({ formats: RECIPE_OPTIONS })
+})
+
+// POST /products/:id/format - Set or override the deliverable format for a product.
+productRoutes.post('/:id/format', async (c) => {
+  const productId = c.req.param('id')
+  const { format } = await c.req.json<{ format?: string }>()
+
+  if (!format) return c.json({ error: 'format is required' }, 400)
+
+  const recipe = getRecipe(format)
+  if (!recipe) {
+    return c.json({
+      error: `Unknown format "${format}". Valid formats: ${RECIPE_OPTIONS.map((r) => r.key).join(', ')}`,
+    }, 400)
+  }
+
+  const now = new Date().toISOString()
+  await c.env.DB.prepare(
+    'UPDATE products SET deliverable_format = ?, updated_at = ? WHERE id = ?',
+  ).bind(recipe.format, now, productId).run()
+
+  return c.json({ ok: true, format: recipe.format })
+})
 
 // POST /products/:id/generate-deliverable - Build (or rebuild) the real
 // downloadable PDF the buyer gets. Invoked by the dashboard "Generate
