@@ -5,11 +5,12 @@ import { KeyRound, Check, ExternalLink, Gauge } from 'lucide-react'
 import { api, type ApiKeyInfo } from '@/lib/api'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
-const GROUP_ORDER: ApiKeyInfo['group'][] = ['AI', 'Publishing', 'Social']
+const GROUP_ORDER: ApiKeyInfo['group'][] = ['AI', 'Publishing', 'Social', 'Email']
 const GROUP_BLURB: Record<ApiKeyInfo['group'], string> = {
   AI: 'Text + image generation. Groq is free and all you need for real AI content.',
   Publishing: 'Storefronts where NEXUS lists finished products.',
   Social: 'Auto-posting. A free Zapier/Make webhook covers every platform.',
+  Email: 'Email scheduler output straight to your inbox. Resend has a free tier; set a From + To address.',
 }
 
 export default function ApiKeysPage() {

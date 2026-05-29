@@ -23,6 +23,7 @@ interface ScheduleRow {
   active: number
   last_run_at: string | null
   created_at: string
+  email: string | null
 }
 
 // --- List schedules -----------------------------------------------------
@@ -42,16 +43,17 @@ scheduleRoutes.post('/', async (c) => {
   const now = new Date().toISOString()
   const taskType = b.task_type === 'product' ? 'product' : 'blog'
   const frequency = b.frequency === 'weekly' ? 'weekly' : 'daily'
+  const email = typeof b.email === 'string' && b.email.trim() ? b.email.trim() : null
   await c.env.DB.prepare(
-    `INSERT INTO schedules (id, name, task_type, domain_slug, category_slug, topic, instructions, frequency, active, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+    `INSERT INTO schedules (id, name, task_type, domain_slug, category_slug, topic, instructions, frequency, active, created_at, email)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
   ).bind(
     id, name, taskType,
     typeof b.domain_slug === 'string' ? b.domain_slug : null,
     typeof b.category_slug === 'string' ? b.category_slug : null,
     typeof b.topic === 'string' ? b.topic : null,
     typeof b.instructions === 'string' ? b.instructions : null,
-    frequency, now,
+    frequency, now, email,
   ).run()
   return c.json({ id, ok: true })
 })
@@ -83,7 +85,7 @@ scheduleRoutes.post('/:id/run', async (c) => {
 // --- Deliveries inbox ---------------------------------------------------
 scheduleRoutes.get('/deliveries/list', async (c) => {
   const rows = await c.env.DB.prepare(
-    'SELECT id, schedule_id, title, kind, product_id, webhook_status, created_at FROM deliveries ORDER BY created_at DESC LIMIT 100',
+    'SELECT id, schedule_id, title, kind, product_id, webhook_status, email_status, created_at FROM deliveries ORDER BY created_at DESC LIMIT 100',
   ).all()
   return c.json({ deliveries: rows.results ?? [] })
 })
@@ -128,6 +130,72 @@ async function postWebhook(env: Env, payload: Record<string, unknown>): Promise<
   }
 }
 
+async function getSecret(env: Env, name: string): Promise<string | null> {
+  try {
+    const v = await env.CONFIG.get(`secret:${name}`)
+    if (v) return v
+  } catch { /* ignore */ }
+  const envVal = (env as unknown as Record<string, unknown>)[name]
+  return typeof envVal === 'string' && envVal ? envVal : null
+}
+
+// Minimal, safe Markdown → HTML for the email body. Handles headings, bold,
+// links, and lists — enough to make the blog post readable in an inbox.
+function mdToHtml(md: string): string {
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const inline = (s: string) => esc(s)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2">$1</a>')
+  const out: string[] = []
+  let inList = false
+  for (const raw of md.replace(/\r\n/g, '\n').split('\n')) {
+    const line = raw.trimEnd()
+    const h = /^(#{1,4})\s+(.*)$/.exec(line)
+    const li = /^\s*[-*]\s+(.*)$/.exec(line)
+    if (li) {
+      if (!inList) { out.push('<ul>'); inList = true }
+      out.push(`<li>${inline(li[1])}</li>`)
+      continue
+    }
+    if (inList) { out.push('</ul>'); inList = false }
+    if (h) {
+      const lvl = Math.min(h[1].length + 1, 4)
+      out.push(`<h${lvl}>${inline(h[2])}</h${lvl}>`)
+    } else if (!line.trim()) {
+      // skip blank
+    } else {
+      out.push(`<p>${inline(line)}</p>`)
+    }
+  }
+  if (inList) out.push('</ul>')
+  return `<div style="font-family:system-ui,Segoe UI,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:640px">${out.join('\n')}</div>`
+}
+
+// Send the delivery by email via Resend (free tier). Returns a status string
+// stored on the delivery. Honest: if no key/recipient is configured, it says
+// so instead of pretending to send.
+async function sendEmail(env: Env, to: string | null, subject: string, markdown: string): Promise<string> {
+  const key = await getSecret(env, 'RESEND_API_KEY')
+  const recipient = (to && to.trim()) || (await getSecret(env, 'EMAIL_TO'))
+  if (!key) return 'no_key'
+  if (!recipient) return 'no_recipient'
+  const from = (await getSecret(env, 'EMAIL_FROM')) || 'NEXUS <onboarding@resend.dev>'
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+      body: JSON.stringify({ from, to: [recipient], subject, html: mdToHtml(markdown) }),
+    })
+    if (res.ok) return 'sent'
+    const detail = await res.text().catch(() => '')
+    console.error('[email] resend failed', res.status, detail.slice(0, 200))
+    return `failed_${res.status}`
+  } catch (err) {
+    console.error('[email] error', err)
+    return 'error'
+  }
+}
+
 // Run a single schedule: generate the deliverable, store it in the inbox,
 // push to the webhook, and stamp last_run_at.
 export async function runSchedule(env: Env, ctx: ScheduleExecCtx, row: ScheduleRow): Promise<{ id: string; title: string; kind: string }> {
@@ -156,7 +224,8 @@ export async function runSchedule(env: Env, ctx: ScheduleExecCtx, row: ScheduleR
        VALUES (?, ?, ?, ?, 'product', ?, ?, ?)`,
     ).bind(deliveryId, row.id, title, `Dispatched the 15-step agent team to build "${row.topic || row.name}".`, productId, 'pending', now).run()
     const webhook = await postWebhook(env, { type: 'product', schedule: row.name, title, product_id: productId })
-    await env.DB.prepare('UPDATE deliveries SET webhook_status = ? WHERE id = ?').bind(webhook, deliveryId).run()
+    const emailStatus = await sendEmail(env, row.email, title, `**${title}**\n\nThe 15-step agent team is building this product now. Check the Review queue on your dashboard to approve and publish it.`)
+    await env.DB.prepare('UPDATE deliveries SET webhook_status = ?, email_status = ? WHERE id = ?').bind(webhook, emailStatus, deliveryId).run()
     await env.DB.prepare('UPDATE schedules SET last_run_at = ? WHERE id = ?').bind(now, row.id).run()
     return { id: deliveryId, title, kind: 'product' }
   }
@@ -176,7 +245,8 @@ Return the post in Markdown: a strong H1 title, a short intro, 3-5 H2 sections, 
      VALUES (?, ?, ?, ?, 'blog', ?, ?)`,
   ).bind(deliveryId, row.id, title, body, 'pending', now).run()
   const webhook = await postWebhook(env, { type: 'blog', schedule: row.name, title, body })
-  await env.DB.prepare('UPDATE deliveries SET webhook_status = ? WHERE id = ?').bind(webhook, deliveryId).run()
+  const emailStatus = await sendEmail(env, row.email, title, body)
+  await env.DB.prepare('UPDATE deliveries SET webhook_status = ?, email_status = ? WHERE id = ?').bind(webhook, emailStatus, deliveryId).run()
   await env.DB.prepare('UPDATE schedules SET last_run_at = ? WHERE id = ?').bind(now, row.id).run()
   return { id: deliveryId, title, kind: 'blog' }
 }

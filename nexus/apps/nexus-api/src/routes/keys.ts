@@ -9,7 +9,7 @@ export const keyRoutes = new Hono<{ Bindings: Env }>()
 interface KeySpec {
   key: string
   label: string
-  group: 'AI' | 'Publishing' | 'Social'
+  group: 'AI' | 'Publishing' | 'Social' | 'Email'
   help: string
   worker: 'ai' | 'api'
 }
@@ -28,6 +28,9 @@ const KEY_SPECS: KeySpec[] = [
   { key: 'SHOPIFY_ADMIN_TOKEN', label: 'Shopify Admin API token', group: 'Publishing', worker: 'api', help: 'Store admin → Apps → Admin API token' },
   { key: 'PUBLISH_WEBHOOK_URL', label: 'Webhook (Zapier/Make — social + any platform)', group: 'Social', worker: 'api', help: 'Free Zapier/Make webhook URL' },
   { key: 'AYRSHARE_API_KEY', label: 'Ayrshare (optional, paid social)', group: 'Social', worker: 'api', help: 'https://app.ayrshare.com/api' },
+  { key: 'RESEND_API_KEY', label: 'Resend (email delivery — free tier)', group: 'Email', worker: 'api', help: 'https://resend.com/api-keys' },
+  { key: 'EMAIL_FROM', label: 'From address (verified Resend sender)', group: 'Email', worker: 'api', help: 'e.g. NEXUS <you@yourdomain.com> — defaults to onboarding@resend.dev' },
+  { key: 'EMAIL_TO', label: 'Default delivery email (where schedules are sent)', group: 'Email', worker: 'api', help: 'Your inbox, e.g. you@gmail.com' },
 ]
 
 function mask(v: string): string {

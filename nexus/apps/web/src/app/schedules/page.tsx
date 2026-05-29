@@ -14,7 +14,7 @@ export default function SchedulesPage() {
   const [open, setDelivery] = useState<DeliveryFull | null>(null)
 
   const [form, setForm] = useState({
-    name: '', task_type: 'blog', topic: '', instructions: '', frequency: 'daily',
+    name: '', task_type: 'blog', topic: '', instructions: '', frequency: 'daily', email: '',
   })
 
   async function refresh() {
@@ -32,7 +32,7 @@ export default function SchedulesPage() {
     setSaving(true)
     try {
       await api.createSchedule(form)
-      setForm({ name: '', task_type: 'blog', topic: '', instructions: '', frequency: 'daily' })
+      setForm({ name: '', task_type: 'blog', topic: '', instructions: '', frequency: 'daily', email: '' })
       await refresh()
     } finally {
       setSaving(false)
@@ -63,7 +63,7 @@ export default function SchedulesPage() {
     <>
       <PageHeader
         title={<span className="flex items-center gap-2"><CalendarClock className="h-6 w-6" /> Scheduler</span>}
-        subtitle="Define a recurring AI task once (e.g. 'every day write a blog post for site A in my style'). NEXUS runs it on schedule and drops the result in your Deliveries inbox + your webhook."
+        subtitle="Define a recurring AI task once (e.g. 'every day write a blog post for site A in my style'). NEXUS runs it on schedule and drops the result in your Deliveries inbox — and emails it to you if you add an email address (set up a Resend key on the API keys page)."
       />
       <PageBody className="space-y-8">
         {/* Create form */}
@@ -97,6 +97,12 @@ export default function SchedulesPage() {
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
               </select>
+            </label>
+            <label className="text-xs text-muted-foreground">
+              Email it to (optional)
+              <input type="email" className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                placeholder="you@gmail.com" value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </label>
             <label className="text-xs text-muted-foreground sm:col-span-2">
               Style / project context
@@ -167,7 +173,7 @@ export default function SchedulesPage() {
                       <span className="truncate">{d.title || 'Untitled'}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {new Date(d.created_at).toLocaleString()} · webhook: {d.webhook_status || 'n/a'}
+                      {new Date(d.created_at).toLocaleString()} · webhook: {d.webhook_status || 'n/a'} · {emailStatusLabel(d.email_status)}
                     </div>
                   </div>
                 </button>
@@ -191,4 +197,15 @@ export default function SchedulesPage() {
       )}
     </>
   )
+}
+
+function emailStatusLabel(status: string | null): string {
+  switch (status) {
+    case 'sent': return 'emailed ✓'
+    case 'no_key': return 'email: add Resend key'
+    case 'no_recipient': return 'email: set an address'
+    case null:
+    case '': return 'email: off'
+    default: return 'email failed'
+  }
 }
