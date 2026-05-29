@@ -36,6 +36,7 @@ import { learningRoutes, runLearningSync } from './routes/learning'
 import { gumroadRoutes } from './routes/gumroad'
 import { scoringRoutes } from './routes/scoring'
 import { podRoutes } from './routes/pod'
+import { browserActionRoutes } from './routes/browser-actions'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -120,6 +121,7 @@ api.route('/gumroad', gumroadRoutes)
 api.route('/niches', scoringRoutes)
 api.route('/products', scoringRoutes)
 api.route('/pod', podRoutes)
+api.route('/browser', browserActionRoutes)
 
 // Mount API routes under /api
 app.route('/api', api)
