@@ -271,6 +271,22 @@ export const api = {
       body: JSON.stringify({ keys }),
     }),
 
+  // AI cost meter + daily spend cap
+  getSpend: () => apiFetch<{ today: number; cap: number; cap_reached: boolean }>('/api/keys/spend'),
+  setCap: (cap_usd: number) =>
+    apiFetch<{ ok: boolean; cap: number }>('/api/keys/cap', {
+      method: 'POST',
+      body: JSON.stringify({ cap_usd }),
+    }),
+
+  // Per-provider ON/OFF (key stays saved)
+  getProviders: () => apiFetch<{ providers: { secretKey: string; off: boolean }[] }>('/api/keys/providers'),
+  toggleProvider: (secretKey: string, off: boolean) =>
+    apiFetch<{ ok: boolean; secretKey: string; off: boolean }>('/api/keys/providers/toggle', {
+      method: 'POST',
+      body: JSON.stringify({ secretKey, off }),
+    }),
+
   // CEO Manager (chat orchestrator)
   managerChat: (message: string, history: ManagerMessage[]) =>
     apiFetch<ManagerReply>('/api/manager/chat', {

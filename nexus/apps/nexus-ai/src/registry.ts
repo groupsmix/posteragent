@@ -12,16 +12,17 @@ import type { AIRegistryEntry, TaskType } from './types'
 export const AI_REGISTRY: Record<TaskType, AIRegistryEntry[]> = {
   // Research Tasks
   research_market: [
-    { id: 'tavily', name: 'Tavily Search', provider: 'tavily', secretKey: 'TAVILY_API_KEY', rank: 1, isFree: true, why: 'Built for AI agents. Returns clean structured web data.', apiModelName: 'tavily-search' },
+    { id: 'perplexity-sonar', name: 'Perplexity Sonar', provider: 'perplexity', secretKey: 'PERPLEXITY_API_KEY', rank: 1, isFree: false, why: 'Web-grounded live research with citations — strongest for market scans.', apiModelName: 'sonar' },
+    { id: 'tavily', name: 'Tavily Search', provider: 'tavily', secretKey: 'TAVILY_API_KEY', rank: 2, isFree: true, why: 'Built for AI agents. Returns clean structured web data.', apiModelName: 'tavily-search' },
     { id: 'exa', name: 'Exa Neural', provider: 'exa', secretKey: 'EXA_API_KEY', rank: 2, isFree: true, why: 'Finds by meaning. Discovers emerging niches.', apiModelName: 'exa-neural' },
     { id: 'serpapi', name: 'SerpAPI', provider: 'serpapi', secretKey: 'SERPAPI_KEY', rank: 3, isFree: true, why: 'Raw Google results. Reliable trend backup.', apiModelName: 'serpapi' },
     { id: 'deepseek-v3', name: 'DeepSeek-V3', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 4, isFree: true, why: 'Reasoning fallback when all search APIs fail.', apiModelName: 'deepseek-chat' },
   ],
 
   research_psychology: [
-    { id: 'deepseek-r1', name: 'DeepSeek-R1', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 1, isFree: true, why: 'Best reasoning model free. Analyzes emotion patterns.', apiModelName: 'deepseek-reasoner' },
-    { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 2, isFree: true, why: 'Strong analytical depth.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
-    { id: 'claude', name: 'Claude Sonnet 4.5', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 3, isFree: false, why: 'Best at nuanced human psychology.', apiModelName: 'claude-sonnet-4-20250514' },
+    { id: 'claude', name: 'Claude Sonnet', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 1, isFree: false, why: 'Best at nuanced human psychology + emotional motivation.', apiModelName: 'claude-sonnet-4-20250514' },
+    { id: 'deepseek-r1', name: 'DeepSeek-R1', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 2, isFree: true, why: 'Best reasoning model free. Analyzes emotion patterns.', apiModelName: 'deepseek-reasoner' },
+    { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 3, isFree: true, why: 'Strong analytical depth.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
   ],
 
   research_keywords: [
@@ -32,14 +33,17 @@ export const AI_REGISTRY: Record<TaskType, AIRegistryEntry[]> = {
   ],
 
   research_competitors: [
-    { id: 'tavily', name: 'Tavily Search', provider: 'tavily', secretKey: 'TAVILY_API_KEY', rank: 1, isFree: true, why: 'Scrapes competitor listings cleanly.', apiModelName: 'tavily-search' },
+    { id: 'perplexity-sonar', name: 'Perplexity Sonar', provider: 'perplexity', secretKey: 'PERPLEXITY_API_KEY', rank: 1, isFree: false, why: 'Live web research — finds and compares real competitor listings.', apiModelName: 'sonar' },
+    { id: 'tavily', name: 'Tavily Search', provider: 'tavily', secretKey: 'TAVILY_API_KEY', rank: 2, isFree: true, why: 'Scrapes competitor listings cleanly.', apiModelName: 'tavily-search' },
     { id: 'qwen-flash', name: 'Qwen 3.5 Flash', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 2, isFree: true, why: 'Fast structured extraction.', apiModelName: 'Qwen/Qwen2.5-7B-Instruct' },
     { id: 'deepseek-v3', name: 'DeepSeek-V3', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 3, isFree: true, why: 'Deeper analysis, identifies content gaps.', apiModelName: 'deepseek-chat' },
   ],
 
   // Content Generation
   generate_long_form: [
-    { id: 'deepseek-v3', name: 'DeepSeek-V3', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 1, isFree: true, why: 'Best free long-form. Avoids robotic patterns.', apiModelName: 'deepseek-chat' },
+    { id: 'gpt', name: 'GPT (OpenAI)', provider: 'openai', secretKey: 'OPENAI_API_KEY', rank: 1, isFree: false, why: 'Top-tier long-form structure and flow.', apiModelName: 'gpt-4o' },
+    { id: 'claude', name: 'Claude Sonnet', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 2, isFree: false, why: 'Best quality writing — natural, persuasive prose.', apiModelName: 'claude-sonnet-4-20250514' },
+    { id: 'deepseek-v3', name: 'DeepSeek-V3', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 3, isFree: true, why: 'Best free long-form. Avoids robotic patterns.', apiModelName: 'deepseek-chat' },
     { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 2, isFree: true, why: 'Strong long-form, excellent for technical topics.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
     { id: 'doubao-pro', name: 'Doubao 1.5 Pro', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 3, isFree: true, why: 'ByteDance model. Most human-like narrative.', apiModelName: 'Doubao-pro-32k' },
     { id: 'kimi', name: 'Kimi k1.5', provider: 'moonshot', secretKey: 'MOONSHOT_API_KEY', rank: 4, isFree: true, why: '10M token context.', apiModelName: 'moonshot-v1-128k' },
@@ -47,7 +51,8 @@ export const AI_REGISTRY: Record<TaskType, AIRegistryEntry[]> = {
   ],
 
   generate_short_copy: [
-    { id: 'deepseek-v3', name: 'DeepSeek-V3', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 1, isFree: true, why: 'Best free persuasive copywriting.', apiModelName: 'deepseek-chat' },
+    { id: 'gpt', name: 'GPT (OpenAI)', provider: 'openai', secretKey: 'OPENAI_API_KEY', rank: 1, isFree: false, why: 'Best at punchy, high-converting hooks and headlines.', apiModelName: 'gpt-4o' },
+    { id: 'deepseek-v3', name: 'DeepSeek-V3', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 2, isFree: true, why: 'Best free persuasive copywriting.', apiModelName: 'deepseek-chat' },
     { id: 'doubao-pro', name: 'Doubao 1.5 Pro', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 2, isFree: true, why: 'TikTok AI. Naturally writes viral hooks.', apiModelName: 'Doubao-pro-32k' },
     { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 3, isFree: true, why: 'Strong tone adaptation.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
     { id: 'claude', name: 'Claude Sonnet 4.5', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 4, isFree: false, why: 'Best copywriter in AI world.', apiModelName: 'claude-sonnet-4-20250514' },
@@ -67,19 +72,20 @@ export const AI_REGISTRY: Record<TaskType, AIRegistryEntry[]> = {
   ],
 
   generate_strategy: [
-    { id: 'deepseek-r1', name: 'DeepSeek-R1', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 1, isFree: true, why: 'Best free reasoning. Matches paid models.', apiModelName: 'deepseek-reasoner' },
-    { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 2, isFree: true, why: 'Strong analytical reasoning.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
-    { id: 'gemini-pro', name: 'Gemini 3.1 Pro', provider: 'google', secretKey: 'GOOGLE_API_KEY', rank: 3, isFree: false, why: '#1 ARC-AGI-2 benchmark.', apiModelName: 'gemini-1.5-pro' },
+    { id: 'claude', name: 'Claude Sonnet', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 1, isFree: false, why: 'Best strategic reasoning + judgment.', apiModelName: 'claude-sonnet-4-20250514' },
+    { id: 'gemini-pro', name: 'Gemini Pro', provider: 'google', secretKey: 'GOOGLE_API_KEY', rank: 2, isFree: false, why: 'Top reasoning benchmark scores.', apiModelName: 'gemini-1.5-pro' },
+    { id: 'deepseek-r1', name: 'DeepSeek-R1', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 3, isFree: true, why: 'Best free reasoning. Matches paid models.', apiModelName: 'deepseek-reasoner' },
+    { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 4, isFree: true, why: 'Strong analytical reasoning.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
   ],
 
   // Image Generation
   generate_image_prompt: [
-    { id: 'flux-pro', name: 'FLUX.1 Pro', provider: 'fal', secretKey: 'FAL_API_KEY', rank: 1, isFree: true, why: '#1 text rendering. POD essential.', apiModelName: 'flux-pro' },
+    { id: 'flux-pro', name: 'FLUX.1 Pro', provider: 'fal', secretKey: 'FAL_KEY', rank: 1, isFree: false, why: '#1 text rendering. POD essential.', apiModelName: 'flux-pro' },
     { id: 'ideogram', name: 'Ideogram 3.0', provider: 'ideogram', secretKey: 'IDEOGRAM_API_KEY', rank: 2, isFree: false, why: 'Specialized typography + graphic design.', apiModelName: 'ideogram-3' },
   ],
 
   generate_image: [
-    { id: 'flux-pro', name: 'FLUX.1 Pro', provider: 'fal', secretKey: 'FAL_API_KEY', rank: 1, isFree: true, why: '#1 text rendering in images.', apiModelName: 'flux-pro' },
+    { id: 'flux-pro', name: 'FLUX.1 Pro', provider: 'fal', secretKey: 'FAL_KEY', rank: 1, isFree: false, why: '#1 text rendering in images.', apiModelName: 'flux-pro' },
     { id: 'ideogram', name: 'Ideogram 3.0', provider: 'ideogram', secretKey: 'IDEOGRAM_API_KEY', rank: 2, isFree: false, why: 'Typography + graphic design layouts.', apiModelName: 'ideogram-3' },
     { id: 'sdxl', name: 'SDXL', provider: 'huggingface', secretKey: 'HF_TOKEN', rank: 3, isFree: true, why: 'Free open-source. Illustration-style.', apiModelName: 'stabilityai/stable-diffusion-xl-base-1.0' },
   ],
@@ -114,38 +120,40 @@ export const AI_REGISTRY: Record<TaskType, AIRegistryEntry[]> = {
   ],
 
   humanize: [
-    { id: 'doubao-pro', name: 'Doubao 1.5 Pro', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 1, isFree: true, why: 'Most human-like conversational output.', apiModelName: 'Doubao-pro-32k' },
-    { id: 'deepseek-v3', name: 'DeepSeek-V3', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 2, isFree: true, why: 'Naturally avoids AI writing patterns.', apiModelName: 'deepseek-chat' },
-    { id: 'claude', name: 'Claude Sonnet 4.5', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 3, isFree: false, why: 'Lowest AI-detection score.', apiModelName: 'claude-sonnet-4-20250514' },
+    { id: 'claude', name: 'Claude Sonnet', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 1, isFree: false, why: 'Most natural prose — lowest AI-detection score.', apiModelName: 'claude-sonnet-4-20250514' },
+    { id: 'doubao-pro', name: 'Doubao 1.5 Pro', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 2, isFree: true, why: 'Most human-like conversational output.', apiModelName: 'Doubao-pro-32k' },
+    { id: 'deepseek-v3', name: 'DeepSeek-V3', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 3, isFree: true, why: 'Naturally avoids AI writing patterns.', apiModelName: 'deepseek-chat' },
   ],
 
   quality_editor: [
-    { id: 'deepseek-v3', name: 'DeepSeek-V3', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 1, isFree: true, why: 'Best at precise editing without losing meaning.', apiModelName: 'deepseek-chat' },
-    { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 2, isFree: true, why: 'Strong editor. Catches redundancy.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
-    { id: 'claude', name: 'Claude Sonnet 4.5', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 3, isFree: false, why: 'Best editing quality.', apiModelName: 'claude-sonnet-4-20250514' },
+    { id: 'claude', name: 'Claude Sonnet', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 1, isFree: false, why: 'Best editing quality — precise without losing meaning.', apiModelName: 'claude-sonnet-4-20250514' },
+    { id: 'deepseek-v3', name: 'DeepSeek-V3', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 2, isFree: true, why: 'Best free precise editing.', apiModelName: 'deepseek-chat' },
+    { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 3, isFree: true, why: 'Strong editor. Catches redundancy.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
   ],
 
   quality_buyer_sim: [
-    { id: 'deepseek-r1', name: 'DeepSeek-R1', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 1, isFree: true, why: 'Reasoning model. Best at simulating buyer.', apiModelName: 'deepseek-reasoner' },
-    { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 2, isFree: true, why: 'Strong at role-play perspective taking.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
-    { id: 'claude', name: 'Claude Sonnet 4.5', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 3, isFree: false, why: 'Best empathy modeling.', apiModelName: 'claude-sonnet-4-20250514' },
+    { id: 'gpt', name: 'GPT (OpenAI)', provider: 'openai', secretKey: 'OPENAI_API_KEY', rank: 1, isFree: false, why: 'Best at role-playing a skeptical buyer.', apiModelName: 'gpt-4o' },
+    { id: 'deepseek-r1', name: 'DeepSeek-R1', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 2, isFree: true, why: 'Reasoning model. Best free at simulating buyer.', apiModelName: 'deepseek-reasoner' },
+    { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 3, isFree: true, why: 'Strong at role-play perspective taking.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
   ],
 
   quality_competitor: [
-    { id: 'deepseek-r1', name: 'DeepSeek-R1', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 1, isFree: true, why: 'Reasoning model. Excellent at comparative analysis.', apiModelName: 'deepseek-reasoner' },
-    { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 2, isFree: true, why: 'Strong at identifying gaps.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
-    { id: 'claude-opus', name: 'Claude Opus 4.6', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 3, isFree: false, why: 'Most nuanced competitive analysis.', apiModelName: 'claude-opus-4-20250514' },
+    { id: 'claude-opus', name: 'Claude Opus', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 1, isFree: false, why: 'Most nuanced competitive analysis.', apiModelName: 'claude-opus-4-20250514' },
+    { id: 'deepseek-r1', name: 'DeepSeek-R1', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 2, isFree: true, why: 'Reasoning model. Excellent free comparative analysis.', apiModelName: 'deepseek-reasoner' },
+    { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 3, isFree: true, why: 'Strong at identifying gaps.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
   ],
 
   quality_ceo: [
-    { id: 'deepseek-r1', name: 'DeepSeek-R1', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 1, isFree: true, why: 'Best free comprehensive multi-criteria review.', apiModelName: 'deepseek-reasoner' },
-    { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 2, isFree: true, why: 'Strong checklist following.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
-    { id: 'claude-opus', name: 'Claude Opus 4.6', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 3, isFree: false, why: 'Most nuanced reviewer.', apiModelName: 'claude-opus-4-20250514' },
+    { id: 'claude-opus', name: 'Claude Opus', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 1, isFree: false, why: 'Most nuanced final reviewer — the CEO’s judgment seat.', apiModelName: 'claude-opus-4-20250514' },
+    { id: 'gpt', name: 'GPT (OpenAI)', provider: 'openai', secretKey: 'OPENAI_API_KEY', rank: 2, isFree: false, why: 'Strong multi-criteria scoring.', apiModelName: 'gpt-4o' },
+    { id: 'deepseek-r1', name: 'DeepSeek-R1', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 3, isFree: true, why: 'Best free comprehensive multi-criteria review.', apiModelName: 'deepseek-reasoner' },
+    { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 4, isFree: true, why: 'Strong checklist following.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
   ],
 
   revenue_estimate: [
     { id: 'deepseek-r1', name: 'DeepSeek-R1', provider: 'deepseek', secretKey: 'DEEPSEEK_API_KEY', rank: 1, isFree: true, why: 'Reasoning model. Best at numerical market analysis.', apiModelName: 'deepseek-reasoner' },
-    { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 2, isFree: true, why: 'Strong analytical reasoning.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
+    { id: 'claude', name: 'Claude Sonnet', provider: 'anthropic', secretKey: 'ANTHROPIC_API_KEY', rank: 2, isFree: false, why: 'Disciplined, conservative revenue reasoning.', apiModelName: 'claude-sonnet-4-20250514' },
+    { id: 'qwen-max', name: 'Qwen 3.5 Max', provider: 'siliconflow', secretKey: 'SILICONFLOW_API_KEY', rank: 3, isFree: true, why: 'Strong analytical reasoning.', apiModelName: 'Qwen/Qwen2.5-72B-Instruct' },
   ],
 
   trend_analysis: [

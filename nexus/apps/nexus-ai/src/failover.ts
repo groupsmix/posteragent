@@ -32,7 +32,24 @@ export async function runWithFailover(
   const models = AI_REGISTRY[taskType] || []
   const tried: string[] = []
 
+  // Cost guardrail: how much we've already spent today on paid models.
+  const cap = await getDailyCap(env)
+  const spentToday = await getSpendToday(env)
+  const capReached = cap > 0 && spentToday >= cap
+
   for (const model of models) {
+    // 0. Per-provider ON/OFF — a key can stay saved while the model is paused.
+    if (await isProviderDisabled(env, model)) {
+      console.log(`[NEXUS-AI] SKIP ${model.name} — provider disabled`)
+      continue
+    }
+
+    // 0b. Daily spend cap — once hit, skip paid models and fall to free ones.
+    if (model.isFree === false && capReached) {
+      console.log(`[NEXUS-AI] SKIP ${model.name} — daily spend cap $${cap} reached`)
+      continue
+    }
+
     // 1. Check if API key exists
     const apiKey = model.secretKey
       ? await getSecret(env, model.secretKey)
@@ -70,6 +87,11 @@ export async function runWithFailover(
       )
 
       console.log(`[NEXUS-AI] SUCCESS ${model.name} — ${result.tokens_used} tokens`)
+
+      // Track spend for the cost meter + daily cap (paid models only).
+      if (model.isFree === false && result.cost_usd) {
+        await addSpend(env, result.cost_usd)
+      }
 
       // Clear any previous rate limit status on success
       if (statusRaw) {
@@ -296,6 +318,28 @@ async function callModelWithTimeout(
         )
         break
 
+      case 'perplexity':
+        result = await callOpenAICompatible(
+          'https://api.perplexity.ai',
+          apiKey,
+          model,
+          prompt,
+          outputFormat,
+          controller.signal
+        )
+        break
+
+      case 'mistral':
+        result = await callOpenAICompatible(
+          'https://api.mistral.ai/v1',
+          apiKey,
+          model,
+          prompt,
+          outputFormat,
+          controller.signal
+        )
+        break
+
       case 'google':
         result = await callGemini(apiKey, model, prompt, controller.signal)
         break
@@ -372,7 +416,8 @@ async function callOpenAICompatible(
 
   const data = await response.json() as any
   const tokensUsed = data.usage?.total_tokens || 0
-  const costUsd = (tokensUsed / 1_000_000) * (model.costPer1MTokens || 0)
+  const rate = model.costPer1MTokens ?? priceFor(model.apiModelName)
+  const costUsd = (tokensUsed / 1_000_000) * rate
 
   return {
     output: data.choices[0].message.content,
@@ -677,6 +722,54 @@ async function callSerpAPI(
 // ============================================================
 // Helper Functions
 // ============================================================
+
+// ============================================================
+// Cost guardrail + per-provider ON/OFF helpers (KV-backed)
+// ============================================================
+
+function todayKey(): string {
+  return `ai_spend:${new Date().toISOString().slice(0, 10)}`
+}
+
+// Blended $/1M tokens estimate for paid models that don't carry an explicit
+// price, so the cost meter + daily cap have something to count.
+function priceFor(apiModelName?: string): number {
+  const m = (apiModelName || '').toLowerCase()
+  if (m.includes('gpt-4o-mini')) return 0.3
+  if (m.includes('gpt')) return 5
+  if (m.includes('opus')) return 30
+  if (m.includes('claude')) return 6
+  if (m.includes('gemini')) return 3.5
+  if (m.includes('sonar')) return 1
+  if (m.includes('mistral')) return 2
+  return 0
+}
+
+export async function getSpendToday(env: Env): Promise<number> {
+  if (!env.CONFIG) return 0
+  const v = await env.CONFIG.get(todayKey())
+  return v ? Number(v) || 0 : 0
+}
+
+export async function getDailyCap(env: Env): Promise<number> {
+  if (!env.CONFIG) return 0
+  const v = await env.CONFIG.get('ai_daily_cap_usd')
+  return v ? Number(v) || 0 : 0 // 0 = no cap
+}
+
+async function addSpend(env: Env, amount: number): Promise<void> {
+  if (!env.CONFIG || amount <= 0) return
+  const current = await getSpendToday(env)
+  // Keep the running daily total for ~48h so the meter survives past midnight.
+  await env.CONFIG.put(todayKey(), String(current + amount), { expirationTtl: 172800 })
+}
+
+// A provider is paused when KV holds `provider_off:<secretKey>` = 'true'.
+async function isProviderDisabled(env: Env, model: AIRegistryEntry): Promise<boolean> {
+  if (!env.CONFIG || !model.secretKey) return false
+  const v = await env.CONFIG.get(`provider_off:${model.secretKey}`)
+  return v === 'true'
+}
 
 async function getSecret(env: Env, key: string): Promise<string | null> {
   // Prefer Cloudflare Secrets Store binding when available.
