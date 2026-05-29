@@ -53,6 +53,10 @@ export interface WorkflowStatus {
     started_at: string | null
     completed_at: string | null
     error: string | null
+    ai_model_used?: string | null
+    ai_models_tried?: string | null
+    tokens_used?: number | null
+    cost_usd?: number | null
   }>
   error: string | null
   started_at: string | null

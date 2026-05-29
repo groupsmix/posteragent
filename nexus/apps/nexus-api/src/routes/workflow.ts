@@ -87,7 +87,7 @@ workflowRoutes.get('/:id', async (c) => {
     
     // Fetch all steps for this run
     const steps = await c.env.DB.prepare(
-      'SELECT id, step_name, status, started_at, completed_at, error FROM workflow_steps WHERE run_id = ? ORDER BY step_order'
+      'SELECT id, step_name, step_type, step_order, status, started_at, completed_at, error, ai_model_used, ai_models_tried, tokens_used, cost_usd FROM workflow_steps WHERE run_id = ? ORDER BY step_order'
     ).bind(runId).all()
     
     const status: WorkflowStatus = {
@@ -102,6 +102,10 @@ workflowRoutes.get('/:id', async (c) => {
         started_at: s.started_at,
         completed_at: s.completed_at,
         error: s.error,
+        ai_model_used: s.ai_model_used,
+        ai_models_tried: s.ai_models_tried,
+        tokens_used: s.tokens_used,
+        cost_usd: s.cost_usd,
       })),
       error: run.error as string | null,
       started_at: run.started_at as string | null,

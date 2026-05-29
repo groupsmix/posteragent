@@ -12,7 +12,13 @@ historyRoutes.get('/', async (c) => {
     const offset = parseInt(c.req.query('offset') || '0')
     
     let query = `
-      SELECT wr.*, p.name as product_name, d.name as domain_name
+      SELECT wr.*, p.name as product_name, d.name as domain_name,
+             (SELECT COUNT(*) FROM workflow_steps ws WHERE ws.run_id = wr.id) AS step_count,
+             (SELECT COUNT(*) FROM workflow_steps ws WHERE ws.run_id = wr.id AND ws.status = 'completed') AS steps_completed,
+             (SELECT COUNT(*) FROM workflow_steps ws WHERE ws.run_id = wr.id AND ws.status = 'failed') AS steps_failed,
+             (SELECT COALESCE(SUM(ws.cost_usd), 0) FROM workflow_steps ws WHERE ws.run_id = wr.id) AS run_cost_usd,
+             (SELECT COALESCE(SUM(ws.tokens_used), 0) FROM workflow_steps ws WHERE ws.run_id = wr.id) AS run_tokens,
+             (SELECT ws.step_name FROM workflow_steps ws WHERE ws.run_id = wr.id AND ws.status = 'failed' ORDER BY ws.step_order LIMIT 1) AS failed_step
       FROM workflow_runs wr
       JOIN products p ON wr.product_id = p.id
       JOIN domains d ON p.domain_id = d.id
