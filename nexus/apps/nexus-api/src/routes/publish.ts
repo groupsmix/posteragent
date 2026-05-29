@@ -5,7 +5,7 @@ import { publishToPlatform, postToSocial, type ListingPayload } from '../service
 
 // Build the listing payload for a variant, preferring variant-specific copy
 // and falling back to the product's master content.
-async function buildListingPayload(
+export async function buildListingPayload(
   env: Env,
   variant: Record<string, unknown>,
 ): Promise<ListingPayload> {
