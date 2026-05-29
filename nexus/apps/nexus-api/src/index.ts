@@ -26,6 +26,7 @@ import { scheduleRoutes, runDueSchedules } from './routes/schedules'
 import { autopilotRoutes, runAutopilot } from './routes/autopilot'
 import { authRoutes, getAccessHash } from './routes/auth'
 import { revenueRoutes } from './routes/revenue'
+import { marketingRoutes, runMarketing } from './routes/marketing'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -100,6 +101,7 @@ api.route('/team', teamRoutes)
 api.route('/schedules', scheduleRoutes)
 api.route('/autopilot', autopilotRoutes)
 api.route('/revenue', revenueRoutes)
+api.route('/marketing', marketingRoutes)
 
 // Mount API routes under /api
 app.route('/api', api)
@@ -130,6 +132,7 @@ export default {
     ctx.waitUntil(runTrendRadar(env))
     ctx.waitUntil(runDueSchedules(env, ctx))
     ctx.waitUntil(runAutopilot(env, ctx))
+    ctx.waitUntil(runMarketing(env, ctx))
   },
 }
 

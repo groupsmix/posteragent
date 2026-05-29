@@ -22,6 +22,7 @@ const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
       { to: '/ceo', label: 'CEO', icon: Bot },
       { to: '/team', label: 'AI Team', icon: Users },
       { to: '/autopilot', label: 'Autopilot', icon: Rocket },
+      { to: '/marketing', label: 'Marketing', icon: Megaphone },
       { to: '/products', label: 'Products', icon: Package },
       { to: '/review', label: 'Review queue', icon: ShieldCheck },
       { to: '/publish', label: 'Publish center', icon: Send },
