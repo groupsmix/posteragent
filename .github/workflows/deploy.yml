@@ -29,6 +29,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Install wrangler
+        run: npm install -g wrangler@3
+
       # Build frontend using next-on-pages
       - name: Build frontend
         run: pnpm --filter web pages:build
@@ -37,19 +40,20 @@ jobs:
 
       # Deploy nexus-ai worker
       - name: Deploy nexus-ai
-        run: npx wrangler deploy
+        run: wrangler deploy
         working-directory: nexus/apps/nexus-ai
 
       # Deploy nexus-api worker
       - name: Deploy nexus-api
-        run: npx wrangler deploy
+        run: wrangler deploy
         working-directory: nexus/apps/nexus-api
 
       # Deploy frontend to Cloudflare Pages
       - name: Deploy frontend
-        run: npx wrangler pages deploy apps/web/.vercel/output/static --project-name nexus-web-cl2
+        run: wrangler pages deploy .vercel/output/static --project-name nexus-web-cl2
+        working-directory: nexus/apps/web
 
       # Run D1 migrations (continue on error — some may already be applied)
       - name: Run D1 migrations
-        run: npx wrangler d1 migrations apply nexus-db --remote || echo "⚠️ Some migrations may have already been applied"
+        run: wrangler d1 migrations apply nexus-db --remote || echo "Some migrations may have already been applied"
         working-directory: nexus/apps/nexus-api
