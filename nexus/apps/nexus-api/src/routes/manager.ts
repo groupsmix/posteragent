@@ -1,7 +1,9 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
+import type { ActionResult } from '@nexus/types'
 import { ProductWorkflow } from '../services/workflow-engine'
 import { callAISimple, safeJson } from '../services/shared'
+import { executeAction, type LiveAction, type LiveActionType } from '../services/action-executor'
 
 export const managerRoutes = new Hono<{ Bindings: Env }>()
 
@@ -20,7 +22,7 @@ interface PlannedProduct {
 }
 
 interface ManagerAction {
-  type: 'create_product' | 'note'
+  type: 'create_product' | 'note' | 'browse' | 'list_product' | 'check_sales' | 'create_pod' | 'run_campaign' | 'analyze_niche'
   domain_slug?: string
   category_slug?: string
   product_name?: string
@@ -30,6 +32,9 @@ interface ManagerAction {
   workflow_id?: string
   status?: 'started' | 'failed'
   detail?: string
+  url?: string
+  instruction?: string
+  platform?: string
 }
 
 const safeParse = safeJson
@@ -160,5 +165,23 @@ If no products should be created, return "products": [].`
       : 'Understood.'
   }
 
-  return c.json({ reply, actions })
+  // Execute live actions for new action types
+  const liveActionTypes: LiveActionType[] = ['browse', 'list_product', 'check_sales', 'create_pod', 'run_campaign', 'analyze_niche']
+  const actionResults: ActionResult[] = []
+  for (const a of actions) {
+    if (liveActionTypes.includes(a.type as LiveActionType)) {
+      const liveAction: LiveAction = {
+        type: a.type as LiveActionType,
+        url: a.url,
+        instruction: a.instruction,
+        niche: a.niche,
+        product_id: a.product_id,
+        platform: a.platform,
+      }
+      const result = await executeAction(liveAction, c.env)
+      actionResults.push(result)
+    }
+  }
+
+  return c.json({ reply, actions, action_results: actionResults })
 })

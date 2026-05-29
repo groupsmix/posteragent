@@ -31,7 +31,7 @@ export interface ManagerMessage {
 }
 
 export interface ManagerAction {
-  type: 'create_product' | 'note'
+  type: 'create_product' | 'note' | 'browse' | 'list_product' | 'check_sales' | 'create_pod' | 'run_campaign' | 'analyze_niche'
   domain_slug?: string
   category_slug?: string
   product_name?: string
@@ -41,11 +41,31 @@ export interface ManagerAction {
   workflow_id?: string
   status?: 'started' | 'failed'
   detail?: string
+  url?: string
+  instruction?: string
+  platform?: string
+}
+
+export interface ActionStep {
+  description: string
+  status: 'pending' | 'running' | 'done' | 'error'
+  screenshot?: string
+  timestamp?: string
+}
+
+export interface ActionResult {
+  success: boolean
+  message: string
+  action_type: string
+  data?: Record<string, unknown>
+  screenshots?: string[]
+  steps?: ActionStep[]
 }
 
 export interface ManagerReply {
   reply: string
   actions: ManagerAction[]
+  action_results?: ActionResult[]
 }
 
 export interface AgentStep {
