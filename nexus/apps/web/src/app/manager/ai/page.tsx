@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react'
 import { Cpu } from 'lucide-react'
 import { api } from '@/lib/api'
+import type { AIModelDashboardStatus } from '@nexus/types'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
 export default function ManagerAIPage() {
-  const [models, setModels] = useState<any[]>([])
+  const [models, setModels] = useState<AIModelDashboardStatus[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

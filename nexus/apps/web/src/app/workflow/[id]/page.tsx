@@ -5,6 +5,7 @@ export const runtime = 'edge'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
+import type { WorkflowStatusResponse, WorkflowStep } from '@nexus/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Loader2, Check, X, Clock, AlertCircle, ChevronRight } from 'lucide-react'
@@ -28,7 +29,7 @@ const STEP_LABELS: Record<string, string> = {
   quality_ceo: '⑮ CEO Review',
 }
 
-function StepItem({ step, index }: { step: any; index: number }) {
+function StepItem({ step, index }: { step: WorkflowStep; index: number }) {
   const icons = {
     waiting: <Clock className="w-5 h-5 text-muted-foreground" />,
     running: <Loader2 className="w-5 h-5 animate-spin text-blue-500" />,
@@ -68,7 +69,7 @@ function StepItem({ step, index }: { step: any; index: number }) {
 export default function WorkflowPage() {
   const params = useParams()
   const router = useRouter()
-  const [workflow, setWorkflow] = useState<any>(null)
+  const [workflow, setWorkflow] = useState<WorkflowStatusResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [polling, setPolling] = useState(true)
 
@@ -156,7 +157,7 @@ export default function WorkflowPage() {
         )}
 
         <div className="space-y-3">
-          {workflow.steps?.map((step: any, index: number) => (
+          {workflow.steps?.map((step: WorkflowStep, index: number) => (
             <StepItem key={step.id || index} step={step} index={index} />
           ))}
         </div>

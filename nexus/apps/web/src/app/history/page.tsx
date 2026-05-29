@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { History as HistoryIcon } from 'lucide-react'
 import { api } from '@/lib/api'
+import type { HistoryRun } from '@/lib/api'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
 function StatusPill({ status, failedStep }: { status: string; failedStep?: string | null }) {
@@ -25,7 +26,7 @@ function StatusPill({ status, failedStep }: { status: string; failedStep?: strin
 }
 
 export default function HistoryPage() {
-  const [runs, setRuns] = useState<any[]>([])
+  const [runs, setRuns] = useState<HistoryRun[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

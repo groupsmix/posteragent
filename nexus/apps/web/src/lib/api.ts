@@ -5,6 +5,12 @@ import type {
   SocialChannel,
   Product,
   ProductDetail,
+  WorkflowStatusResponse,
+  TrendAlert,
+  WinnerPattern,
+  AIModelDashboardStatus,
+  PromptTemplate,
+  Settings,
 } from '@nexus/types'
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787'
@@ -225,6 +231,29 @@ export interface Digest {
   recent: { name: string; created_at: string }[]
 }
 
+export interface HistoryRun {
+  id: string
+  product_id: string
+  product_name: string | null
+  status: string
+  failed_step: string | null
+  step_count: number
+  steps_completed: number
+  steps_failed: number
+  run_tokens: number
+  run_cost_usd: number
+  started_at: string | null
+  completed_at: string | null
+}
+
+export interface PublishItem {
+  id: string
+  product_name: string | null
+  title: string | null
+  platform_name: string | null
+  status: string
+}
+
 const TOKEN_KEY = 'nexus_token'
 
 export function getToken(): string | null {
@@ -300,7 +329,7 @@ export const api = {
 
   // Workflow
   startWorkflow: (data: StartWorkflowInput) => apiFetch<{ workflow_id: string; product_id: string }>('/api/workflow/start', { method: 'POST', body: JSON.stringify(data) }),
-  getWorkflowStatus: (id: string) => apiFetch<any>(`/api/workflow/${id}`),
+  getWorkflowStatus: (id: string) => apiFetch<WorkflowStatusResponse>(`/api/workflow/${id}`),
 
   // Review
   approveProduct: (productId: string) => apiFetch<void>(`/api/review/${productId}/approve`, { method: 'POST' }),
@@ -308,7 +337,7 @@ export const api = {
 
   // Products
   getProducts: (filters?: { status?: string; domain_id?: string; limit?: number }) =>
-    apiFetch<{ products: Product[] }>(`/api/products?${new URLSearchParams(filters as any)}`),
+    apiFetch<{ products: Product[] }>(`/api/products?${new URLSearchParams(filters as Record<string, string>)}`),
   getProduct: (id: string) => apiFetch<Product>(`/api/products/${id}`),
   getProductDetail: (id: string) => apiFetch<ProductDetail>(`/api/products/${id}/detail`),
   generateDeliverable: (id: string, opts?: { format?: string; force?: boolean }) => {
@@ -329,16 +358,16 @@ export const api = {
   deleteProduct: (id: string) => apiFetch<void>(`/api/products/${id}`, { method: 'DELETE' }),
 
   // Trends
-  getTrends: () => apiFetch<any[]>('/api/trends'),
+  getTrends: () => apiFetch<TrendAlert[]>('/api/trends'),
   dismissTrend: (id: string) => apiFetch<void>(`/api/trends/${id}/dismiss`, { method: 'POST' }),
   startTrendWorkflow: (id: string) => apiFetch<{ workflow_id: string }>(`/api/trends/${id}/start`, { method: 'POST' }),
 
   // Winners
-  getWinnerPatterns: () => apiFetch<any[]>('/api/winners'),
+  getWinnerPatterns: () => apiFetch<WinnerPattern[]>('/api/winners'),
 
   // AI Models
-  getAIModels: () => apiFetch<any[]>('/api/ai-models'),
-  updateAIModel: (id: string, data: any) => apiFetch<any>(`/api/ai-models/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  getAIModels: () => apiFetch<AIModelDashboardStatus[]>('/api/ai-models'),
+  updateAIModel: (id: string, data: Partial<AIModelDashboardStatus>) => apiFetch<AIModelDashboardStatus>(`/api/ai-models/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Platforms
   getPlatforms: () => apiFetch<Platform[]>('/api/platforms'),
@@ -353,12 +382,12 @@ export const api = {
   deleteSocialChannel: (id: string) => apiFetch<void>(`/api/social/${id}`, { method: 'DELETE' }),
 
   // Prompts
-  getPrompts: (layer?: string) => apiFetch<any[]>(`/api/prompts${layer ? `?layer=${layer}` : ''}`),
-  updatePrompt: (id: string, promptText: string) => apiFetch<any>(`/api/prompts/${id}`, { method: 'PATCH', body: JSON.stringify({ prompt_text: promptText }) }),
+  getPrompts: (layer?: string) => apiFetch<PromptTemplate[]>(`/api/prompts${layer ? `?layer=${layer}` : ''}`),
+  updatePrompt: (id: string, promptText: string) => apiFetch<PromptTemplate>(`/api/prompts/${id}`, { method: 'PATCH', body: JSON.stringify({ prompt_text: promptText }) }),
 
   // Settings
-  getSettings: () => apiFetch<any>('/api/settings'),
-  updateSettings: (data: any) => apiFetch<any>('/api/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+  getSettings: () => apiFetch<Settings>('/api/settings'),
+  updateSettings: (data: Partial<Settings>) => apiFetch<Settings>('/api/settings', { method: 'PATCH', body: JSON.stringify(data) }),
 
   // API keys (dashboard-managed provider credentials)
   getKeys: () => apiFetch<{ keys: ApiKeyInfo[] }>('/api/keys'),
@@ -443,10 +472,10 @@ export const api = {
   restoreProduct: (id: string) => apiFetch<void>(`/api/graveyard/${id}/restore`, { method: 'POST' }),
 
   // History
-  getHistory: () => apiFetch<{ runs: any[] }>('/api/history'),
+  getHistory: () => apiFetch<{ runs: HistoryRun[] }>('/api/history'),
 
   // Publish
-  getPublishQueue: () => apiFetch<{ items: any[] }>('/api/publish'),
+  getPublishQueue: () => apiFetch<{ items: PublishItem[] }>('/api/publish'),
   publishItem: (id: string) => apiFetch<void>(`/api/publish/${id}`, { method: 'POST' }),
 
   // Revenue (real Gumroad sales)

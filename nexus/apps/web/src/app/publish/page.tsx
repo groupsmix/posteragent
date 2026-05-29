@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react'
 import { Send } from 'lucide-react'
 import { api } from '@/lib/api'
+import type { PublishItem } from '@/lib/api'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
 export default function PublishPage() {
-  const [items, setItems] = useState<any[]>([])
+  const [items, setItems] = useState<PublishItem[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<Record<string, boolean>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})

@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react'
 import { Settings as SettingsIcon, Lock, ShieldCheck } from 'lucide-react'
 import { api, setToken } from '@/lib/api'
+import type { Settings } from '@nexus/types'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<any | null>(null)
+  const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -16,7 +17,7 @@ export default function SettingsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const update = async (patch: any) => {
+  const update = async (patch: Partial<Settings>) => {
     if (!settings) return
     setSaving(true)
     try {

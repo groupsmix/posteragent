@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react'
 import { FileCode } from 'lucide-react'
 import { api } from '@/lib/api'
+import type { PromptTemplate } from '@nexus/types'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
 const LAYERS = ['master', 'persona', 'role', 'domain', 'category', 'platform', 'social', 'quality']
 
 export default function ManagerPromptsPage() {
   const [layer, setLayer] = useState<string>('master')
-  const [prompts, setPrompts] = useState<any[]>([])
+  const [prompts, setPrompts] = useState<PromptTemplate[]>([])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
