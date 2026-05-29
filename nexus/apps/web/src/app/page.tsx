@@ -8,6 +8,7 @@ import {
 import { api, type AutopilotStatus } from '@/lib/api'
 import type { Product } from '@nexus/types'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
+import { SetupBanner } from '@/components/shared/SetupBanner'
 
 interface Counts { total: number; pending: number; approved: number; published: number }
 
@@ -46,6 +47,8 @@ export default function HomePage() {
             <div className="text-xs text-muted-foreground mt-1">{error}</div>
           </div>
         )}
+
+        <SetupBanner />
 
         {/* Quick actions */}
         <div className="grid gap-3 sm:grid-cols-3">
