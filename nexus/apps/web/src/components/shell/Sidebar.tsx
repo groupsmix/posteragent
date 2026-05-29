@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutGrid, Workflow, ShieldCheck, Package, Skull, Send, Radar,
-  Trophy, Settings as SettingsIcon, Cpu, Globe2, Megaphone, FileCode, History,
+  Settings as SettingsIcon, Cpu, Globe2, Megaphone, FileCode, History,
   Bot, KeyRound, Users, CalendarClock, Rocket, LayoutDashboard, Plus, ChevronDown, DollarSign,
   Menu, X,
 } from 'lucide-react'
@@ -24,7 +24,6 @@ const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
       { to: '/team', label: 'AI Team', icon: Users },
       { to: '/autopilot', label: 'Autopilot', icon: Rocket },
       { to: '/marketing', label: 'Marketing', icon: Megaphone },
-      { to: '/browser', label: 'Browser', icon: Globe2 },
       { to: '/products', label: 'Products', icon: Package },
       { to: '/review', label: 'Review queue', icon: ShieldCheck },
       { to: '/publish', label: 'Publish center', icon: Send },
@@ -35,8 +34,7 @@ const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
     title: 'Intelligence',
     items: [
       { to: '/revenue', label: 'Revenue', icon: DollarSign },
-      { to: '/trends', label: 'Trend radar', icon: Radar },
-      { to: '/winners', label: 'Winner patterns', icon: Trophy },
+      { to: '/intelligence', label: 'Trends & winners', icon: Radar },
       { to: '/graveyard', label: 'Graveyard', icon: Skull },
       { to: '/history', label: 'Run history', icon: History },
     ],
@@ -45,6 +43,7 @@ const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
     title: 'Manage',
     collapsible: true,
     items: [
+      { to: '/browser', label: 'Browser automation', icon: Globe2 },
       { to: '/manager/domains', label: 'Domains & categories', icon: LayoutGrid },
       { to: '/manager/platforms', label: 'Platforms', icon: Globe2 },
       { to: '/manager/social', label: 'Social channels', icon: Megaphone },
