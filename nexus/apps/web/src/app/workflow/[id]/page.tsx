@@ -44,16 +44,19 @@ function StepItem({ step, index }: { step: any; index: number }) {
         <p className={`font-medium ${step.status === 'completed' ? 'text-green-600' : step.status === 'failed' ? 'text-red-600' : ''}`}>
           {STEP_LABELS[step.step_name] || step.step_name}
         </p>
-        {step.started_at && (
-          <p className="text-xs text-muted-foreground">
-            Started: {new Date(step.started_at).toLocaleTimeString()}
-          </p>
+        <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+          {step.started_at && <span>Started {new Date(step.started_at).toLocaleTimeString()}</span>}
+          {Number(step.tokens_used) > 0 && <span>{Number(step.tokens_used).toLocaleString()} tokens</span>}
+          {Number(step.cost_usd) > 0 && <span>${Number(step.cost_usd).toFixed(4)}</span>}
+        </div>
+        {step.ai_models_tried && step.ai_models_tried !== step.ai_model_used && (
+          <p className="text-xs text-muted-foreground mt-0.5">tried: {step.ai_models_tried}</p>
         )}
         {step.error && (
           <p className="text-xs text-red-500 mt-1">{step.error}</p>
         )}
       </div>
-      {step.ai_model_used && step.status === 'completed' && (
+      {step.ai_model_used && (
         <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
           {step.ai_model_used}
         </span>
