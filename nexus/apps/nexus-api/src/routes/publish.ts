@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { Env } from '../env'
 import type { PublishRequest, PublishResult } from '../types'
 import { publishToPlatform, postToSocial, type ListingPayload } from '../services/publishers'
+import { checkPrePublish } from '../services/quality-gate'
 
 // Build the listing payload for a variant, preferring variant-specific copy
 // and falling back to the product's master content.
@@ -65,6 +66,27 @@ publishRoutes.post('/', async (c) => {
     
     if (!body.product_id || !body.platform_ids || body.platform_ids.length === 0) {
       return c.json({ error: 'product_id and platform_ids are required' }, 400)
+    }
+
+    // Quality gate: pre-publish check
+    const product = await c.env.DB.prepare(
+      `SELECT name, description, tags, price, deliverable_url, image_url FROM products WHERE id = ?`,
+    ).bind(body.product_id).first<{
+      name: string | null
+      description: string | null
+      tags: string | null
+      price: number | null
+      deliverable_url: string | null
+      image_url: string | null
+    }>()
+    if (product) {
+      const gate = checkPrePublish(product)
+      if (!gate.pass) {
+        return c.json({
+          error: 'Quality gate failed — product not ready to publish',
+          quality_gate: gate,
+        }, 422)
+      }
     }
     
     const result: PublishResult = { published: [] }

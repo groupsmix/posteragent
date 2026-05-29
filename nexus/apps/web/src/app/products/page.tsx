@@ -3,23 +3,33 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Package, Trash2, Search } from 'lucide-react'
-import { api } from '@/lib/api'
+import { api, type ProductScoreResponse } from '@/lib/api'
 import type { Product } from '@nexus/types'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
+import { ScoreBadge } from '@/components/shared/ScoreBadge'
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [scores, setScores] = useState<Record<string, number>>({})
 
   useEffect(() => {
     api
       .getProducts({ limit: 100 })
-      .then((r) => setProducts(r.products || []))
+      .then((r) => {
+        const prods = r.products || []
+        setProducts(prods)
+        for (const p of prods) {
+          api.getProductScore(p.id).then((s: ProductScoreResponse) => {
+            setScores((prev) => ({ ...prev, [p.id]: s.score.total }))
+          }).catch(() => {})
+        }
+      })
       .catch(() => setProducts([]))
       .finally(() => setLoading(false))
   }, [])
@@ -103,7 +113,9 @@ export default function ProductsPage() {
                       {p.niche ?? '—'}
                     </td>
                     <td className="px-4 py-3">
-                      {typeof p.ai_score === 'number' ? (
+                      {typeof scores[p.id] === 'number' ? (
+                        <ScoreBadge score={scores[p.id]} label="100" />
+                      ) : typeof p.ai_score === 'number' ? (
                         <span className="font-mono text-xs">{p.ai_score.toFixed(1)}/10</span>
                       ) : (
                         <span className="text-muted-foreground text-xs">—</span>

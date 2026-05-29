@@ -13,6 +13,7 @@
 import type { Env } from '../env'
 import type { TaskType, AIRunTaskResponse } from '@nexus/types'
 import { callAI as sharedCallAI, safeJson } from './shared'
+import { checkPostBuild } from './quality-gate'
 
 interface StepDef {
   name: string
@@ -345,6 +346,29 @@ export class ProductWorkflow {
       await this.generateAndStoreImage(ctx)
 
       await this.persistResults(ctx)
+
+      // Quality gate: post-build check
+      const postBuildProduct = {
+        name: ctx.data.title_variants?.[0] ?? null,
+        description: ctx.data.content ?? null,
+        deliverable_url: ctx.data.image_url ?? null,
+        price: ctx.data.revenue?.avg ?? ctx.data.market?.price_range?.avg ?? null,
+        tags: ctx.data.tags ?? null,
+        image_url: ctx.data.image_url ?? null,
+      }
+      const postBuildResult = checkPostBuild(postBuildProduct)
+      ctx.data.quality_gate = {
+        post_build: {
+          pass: postBuildResult.pass,
+          issues: postBuildResult.issues,
+          score: postBuildResult.score,
+        },
+      }
+
+      // Store quality gate result in the workflow run
+      await this.env.DB.prepare(
+        `UPDATE workflow_runs SET quality_gate_json = ? WHERE id = ?`
+      ).bind(JSON.stringify(ctx.data.quality_gate), runId).run().catch(() => void 0)
 
       await this.env.DB.prepare(
         `UPDATE workflow_runs SET status='completed', completed_at=?, current_step=NULL WHERE id=?`

@@ -33,6 +33,8 @@ import { backfillDeliverables } from './services/deliverable'
 import { digestRoutes } from './routes/digest'
 import { sendDailyDigest } from './services/digest'
 import { learningRoutes, runLearningSync } from './routes/learning'
+import { gumroadRoutes } from './routes/gumroad'
+import { scoringRoutes } from './routes/scoring'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -113,6 +115,9 @@ api.route('/marketing', marketingRoutes)
 api.route('/browser', browserRoutes)
 api.route('/digest', digestRoutes)
 api.route('/learning', learningRoutes)
+api.route('/gumroad', gumroadRoutes)
+api.route('/niches', scoringRoutes)
+api.route('/products', scoringRoutes)
 
 // Mount API routes under /api
 app.route('/api', api)
