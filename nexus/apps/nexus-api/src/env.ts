@@ -1,4 +1,5 @@
 import type { D1Database, KVNamespace, R2Bucket, Ai, Fetcher } from '@cloudflare/workers-types'
+import type { BrowserWorker } from '@cloudflare/puppeteer'
 
 // Environment bindings for Cloudflare Workers
 export interface Env {
@@ -16,6 +17,10 @@ export interface Env {
 
   // Service binding to AI worker
   AI_WORKER: Fetcher
+
+  // Browser Rendering binding (headless Chromium — Workers Paid plan).
+  // Optional so local/free environments without it still type-check and run.
+  BROWSER?: BrowserWorker
 
   // Cloudflare Workflows binding
   PRODUCT_WORKFLOW: {
