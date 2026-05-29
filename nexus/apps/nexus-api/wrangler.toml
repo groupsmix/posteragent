@@ -70,6 +70,6 @@ binding = "BROWSER"
 # SCHEDULED TRIGGERS (Trend Radar)
 # ================================
 [triggers]
-crons = ["0 6 * * *"]  # Daily at 6am UTC
+crons = ["0 7 * * *"]  # Daily at 7am UTC
 
 

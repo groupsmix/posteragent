@@ -41,7 +41,10 @@ export function DigestCard() {
         <h2 className="flex items-center gap-2 text-sm font-semibold">
           <Sunrise className="h-4 w-4 text-primary" /> Morning report
         </h2>
-        <span className="text-xs text-muted-foreground">{d.date}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">{d.date}</span>
+          <Link href="/digest" className="text-xs text-primary hover:underline">View full digest &rarr;</Link>
+        </div>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">What happened while you slept.</p>
       <div className="mt-4 grid gap-3 grid-cols-2 lg:grid-cols-4">
