@@ -210,6 +210,21 @@ export interface RevenueResponse {
   products?: RevenueProduct[]
 }
 
+export interface Digest {
+  date: string
+  built_24h: number
+  needs_review: number
+  published: number
+  approved: number
+  spend_today: number
+  spend_cap: number
+  sales_configured: boolean
+  total_sales: number
+  total_revenue: number
+  best_seller: string | null
+  recent: { name: string; created_at: string }[]
+}
+
 const TOKEN_KEY = 'nexus_token'
 
 export function getToken(): string | null {
@@ -436,6 +451,9 @@ export const api = {
 
   // Revenue (real Gumroad sales)
   getRevenue: () => apiFetch<RevenueResponse>('/api/revenue'),
+
+  // Daily digest / morning report
+  getDigest: () => apiFetch<Digest>('/api/digest'),
 
   // Access gate
   getAuthStatus: () => apiFetch<{ protected: boolean }>('/api/auth/status'),

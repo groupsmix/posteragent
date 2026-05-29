@@ -141,7 +141,7 @@ async function getSecret(env: Env, name: string): Promise<string | null> {
 
 // Minimal, safe Markdown → HTML for the email body. Handles headings, bold,
 // links, and lists — enough to make the blog post readable in an inbox.
-function mdToHtml(md: string): string {
+export function mdToHtml(md: string): string {
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const inline = (s: string) => esc(s)
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
@@ -174,7 +174,7 @@ function mdToHtml(md: string): string {
 // Send the delivery by email via Resend (free tier). Returns a status string
 // stored on the delivery. Honest: if no key/recipient is configured, it says
 // so instead of pretending to send.
-async function sendEmail(env: Env, to: string | null, subject: string, markdown: string): Promise<string> {
+export async function sendEmail(env: Env, to: string | null, subject: string, markdown: string): Promise<string> {
   const key = await getSecret(env, 'RESEND_API_KEY')
   const recipient = (to && to.trim()) || (await getSecret(env, 'EMAIL_TO'))
   if (!key) return 'no_key'
