@@ -121,6 +121,32 @@ export interface DeliveryFull extends Delivery {
   body: string | null
 }
 
+export interface AutopilotWinner {
+  id: string
+  name: string
+  status: string
+  ai_score: number
+  est: number
+}
+
+export interface AutopilotLogEntry {
+  action: string
+  product_id: string | null
+  niche: string | null
+  domain_slug: string | null
+  note: string | null
+  created_at: string
+}
+
+export interface AutopilotStatus {
+  enabled: boolean
+  per_run: number
+  products_built: number
+  est_revenue: { low: number; high: number; currency: string }
+  winners: AutopilotWinner[]
+  recent: AutopilotLogEntry[]
+}
+
 // Resolve an API-relative asset path (e.g. /api/assets/r2/...) to an absolute
 // URL the browser can load. Absolute URLs are returned unchanged.
 export function assetUrl(path?: string | null): string | null {
@@ -270,6 +296,14 @@ export const api = {
     apiFetch<{ ok: boolean; delivery: { id: string; title: string; kind: string } }>(`/api/schedules/${id}/run`, { method: 'POST' }),
   getDeliveries: () => apiFetch<{ deliveries: Delivery[] }>('/api/schedules/deliveries/list'),
   getDelivery: (id: string) => apiFetch<{ delivery: DeliveryFull }>(`/api/schedules/deliveries/${id}`),
+
+  // Autopilot money engine
+  getAutopilot: () => apiFetch<AutopilotStatus>('/api/autopilot/status'),
+  toggleAutopilot: (enabled: boolean, perRun?: number) =>
+    apiFetch<{ ok: boolean; enabled: boolean }>('/api/autopilot/toggle', {
+      method: 'POST', body: JSON.stringify({ enabled, ...(perRun ? { per_run: perRun } : {}) }),
+    }),
+  runAutopilot: () => apiFetch<{ ok: boolean; built: number }>('/api/autopilot/run', { method: 'POST' }),
 
   // Graveyard
   getGraveyard: () => apiFetch<{ products: Product[] }>('/api/graveyard'),

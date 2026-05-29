@@ -23,6 +23,7 @@ import { managerRoutes } from './routes/manager'
 import { agentRoutes } from './routes/agent'
 import { teamRoutes } from './routes/team'
 import { scheduleRoutes, runDueSchedules } from './routes/schedules'
+import { autopilotRoutes, runAutopilot } from './routes/autopilot'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -78,6 +79,7 @@ api.route('/manager', managerRoutes)
 api.route('/manager', agentRoutes)
 api.route('/team', teamRoutes)
 api.route('/schedules', scheduleRoutes)
+api.route('/autopilot', autopilotRoutes)
 
 // Mount API routes under /api
 app.route('/api', api)
@@ -107,6 +109,7 @@ export default {
     console.log('[cron] Scheduled tasks triggered')
     ctx.waitUntil(runTrendRadar(env))
     ctx.waitUntil(runDueSchedules(env, ctx))
+    ctx.waitUntil(runAutopilot(env, ctx))
   },
 }
 
