@@ -8,8 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "pages:build": "next-on-pages",
-    "pages:deploy": "wrangler pages deploy .vercel/output/static --project-name nexus-web --branch main --commit-dirty=true"
+    "pages:build": "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://nexus-api.professional-inbox-simo.workers.dev} next-on-pages",
+    "pages:deploy": "wrangler pages deploy .vercel/output/static --project-name nexus-web --branch main --commit-dirty=true",
+    "pages:ship": "pnpm pages:build && pnpm pages:deploy"
   },
   "dependencies": {
     "@nexus/types": "workspace:*",
