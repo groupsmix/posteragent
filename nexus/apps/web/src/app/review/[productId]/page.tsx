@@ -13,6 +13,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Markdown } from '@/components/Markdown'
 import {
   CheckCircle2, XCircle, AlertTriangle, ThumbsDown, ThumbsUp, Edit3, Trash2, Download,
+  FileText, ExternalLink,
 } from 'lucide-react'
 
 export default function ReviewPage() {
@@ -26,6 +27,7 @@ export default function ReviewPage() {
   const [feedback, setFeedback] = useState('')
   const [showReject, setShowReject] = useState(false)
   const [editing, setEditing] = useState<null | 'title' | 'description' | 'tags'>(null)
+  const [genning, setGenning] = useState(false)
 
   useEffect(() => {
     api.getProductDetail(id).then(setP).catch(() => setP(null))
@@ -56,6 +58,17 @@ export default function ReviewPage() {
     if (!confirm(`Delete "${p.name || 'this product'}"? This removes it and its files for good.`)) return
     await api.deleteProduct(p.id)
     router.push('/products')
+  }
+  const genDeliverable = async () => {
+    setGenning(true)
+    try {
+      const r = await api.generateDeliverable(p.id)
+      setP({ ...p, deliverable_url: r.deliverable_url, deliverable_format: r.deliverable_format })
+    } catch {
+      alert('Could not generate the deliverable right now. The free AI engine may be busy — try again in a moment.')
+    } finally {
+      setGenning(false)
+    }
   }
 
   return (
@@ -106,6 +119,44 @@ export default function ReviewPage() {
                 />
               </Section>
             )}
+
+            <Section title="Deliverable (the file the buyer gets)">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                    <FileText className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <div className="text-sm font-medium">
+                      {p.deliverable_url ? `${p.deliverable_format || 'Product'} · PDF` : 'No deliverable yet'}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {p.deliverable_url
+                        ? 'Real, downloadable content — not just a brief.'
+                        : 'Generate the actual file the buyer downloads.'}
+                    </div>
+                  </div>
+                </div>
+                {p.deliverable_url ? (
+                  <a
+                    href={assetUrl(p.deliverable_url) ?? ''}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-md bg-gradient-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" /> View PDF
+                  </a>
+                ) : (
+                  <button
+                    onClick={genDeliverable}
+                    disabled={genning}
+                    className="inline-flex items-center gap-1 rounded-md bg-gradient-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow disabled:opacity-50"
+                  >
+                    <FileText className="h-3.5 w-3.5" /> {genning ? 'Generating…' : 'Generate deliverable'}
+                  </button>
+                )}
+              </div>
+            </Section>
 
             <Section
               title="Title"

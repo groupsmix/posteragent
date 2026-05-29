@@ -12,6 +12,7 @@
 
 import type { Env } from '../env'
 import type { TaskType, AIRunTaskResponse } from '@nexus/types'
+import { getAccessHash } from '../routes/auth'
 
 interface StepDef {
   name: string
@@ -365,6 +366,19 @@ export class ProductWorkflow {
         now(),
         productId,
       ).run()
+
+      // The real deliverable (downloadable PDF) is generated in a separate
+      // worker invocation — fire-and-forget so it doesn't extend this run's
+      // time budget. A cron backfill + manual button cover any that miss.
+      if (this.env.SELF) {
+        const hash = await getAccessHash(this.env).catch(() => null)
+        this.env.SELF.fetch(
+          new Request(`https://nexus-api/api/products/${productId}/generate-deliverable`, {
+            method: 'POST',
+            headers: hash ? { Authorization: `Bearer ${hash}` } : {},
+          }),
+        ).catch(() => void 0)
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.error(`[workflow:${runId}] FATAL:`, message)
