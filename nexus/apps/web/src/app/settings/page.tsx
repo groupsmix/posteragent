@@ -3,7 +3,11 @@
 import { useEffect, useState } from 'react'
 import { Settings as SettingsIcon, Lock, ShieldCheck } from 'lucide-react'
 import { api, setToken } from '@/lib/api'
-import type { Settings } from '@nexus/types'
+import type { Settings as BaseSettings } from '@nexus/types'
+
+interface Settings extends BaseSettings {
+  default_currency?: string
+}
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
 export default function SettingsPage() {
@@ -17,7 +21,7 @@ export default function SettingsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const update = async (patch: Partial<Settings>) => {
+  const update = async (patch: Partial<Settings & Record<string, unknown>>) => {
     if (!settings) return
     setSaving(true)
     try {
@@ -61,8 +65,8 @@ export default function SettingsPage() {
             />
             <ToggleRow
               label="Auto-publish after approval"
-              checked={!!settings.auto_publish}
-              onChange={(v) => update({ auto_publish: v })}
+              checked={!!settings.auto_publish_after_approval}
+              onChange={(v) => update({ auto_publish_after_approval: v })}
             />
             <ToggleRow
               label="Trend radar enabled"

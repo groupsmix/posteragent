@@ -45,8 +45,8 @@ export default function ManagerPromptsPage() {
             {prompts.map((p) => (
               <li key={p.id} className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-semibold">{p.label || p.key}</div>
-                  <div className="text-xs text-muted-foreground font-mono">{p.key}</div>
+                  <div className="text-sm font-semibold">{p.name}</div>
+                  <div className="text-xs text-muted-foreground font-mono">{p.layer}</div>
                 </div>
                 <textarea
                   defaultValue={p.prompt_text}

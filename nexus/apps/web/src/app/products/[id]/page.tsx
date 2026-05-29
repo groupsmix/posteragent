@@ -179,7 +179,7 @@ export default function ProductDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {Object.entries(product.section_scores).map(([key, value]) => (
-                    <ScoreBar key={key} label={key} score={value} />
+                    <ScoreBar key={key} label={key} value={value} />
                   ))}
                 </CardContent>
               </Card>
