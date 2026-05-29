@@ -22,6 +22,7 @@ import { keyRoutes } from './routes/keys'
 import { managerRoutes } from './routes/manager'
 import { agentRoutes } from './routes/agent'
 import { teamRoutes } from './routes/team'
+import { scheduleRoutes, runDueSchedules } from './routes/schedules'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -76,6 +77,7 @@ api.route('/keys', keyRoutes)
 api.route('/manager', managerRoutes)
 api.route('/manager', agentRoutes)
 api.route('/team', teamRoutes)
+api.route('/schedules', scheduleRoutes)
 
 // Mount API routes under /api
 app.route('/api', api)
@@ -102,8 +104,9 @@ app.notFound((c) => {
 export default {
   fetch: app.fetch,
   scheduled: async (_controller: ScheduledController, env: Env, ctx: ExecutionContext) => {
-    console.log('[cron] Scheduled Trend Radar triggered')
+    console.log('[cron] Scheduled tasks triggered')
     ctx.waitUntil(runTrendRadar(env))
+    ctx.waitUntil(runDueSchedules(env, ctx))
   },
 }
 

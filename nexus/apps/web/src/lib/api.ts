@@ -83,6 +83,44 @@ export interface TeamReply {
   waves: TeamWave[]
 }
 
+export interface Schedule {
+  id: string
+  name: string
+  task_type: string
+  domain_slug: string | null
+  category_slug: string | null
+  topic: string | null
+  instructions: string | null
+  frequency: string
+  active: number
+  last_run_at: string | null
+  created_at: string
+}
+
+export interface NewSchedule {
+  name: string
+  task_type: string
+  domain_slug?: string
+  category_slug?: string
+  topic?: string
+  instructions?: string
+  frequency: string
+}
+
+export interface Delivery {
+  id: string
+  schedule_id: string | null
+  title: string | null
+  kind: string
+  product_id: string | null
+  webhook_status: string | null
+  created_at: string
+}
+
+export interface DeliveryFull extends Delivery {
+  body: string | null
+}
+
 // Resolve an API-relative asset path (e.g. /api/assets/r2/...) to an absolute
 // URL the browser can load. Absolute URLs are returned unchanged.
 export function assetUrl(path?: string | null): string | null {
@@ -220,6 +258,18 @@ export const api = {
 
   // AI agent team line-up
   getTeam: () => apiFetch<TeamReply>('/api/team'),
+
+  // Scheduler
+  getSchedules: () => apiFetch<{ schedules: Schedule[] }>('/api/schedules'),
+  createSchedule: (s: NewSchedule) =>
+    apiFetch<{ id: string; ok: boolean }>('/api/schedules', { method: 'POST', body: JSON.stringify(s) }),
+  toggleSchedule: (id: string, active: boolean) =>
+    apiFetch<void>(`/api/schedules/${id}`, { method: 'PATCH', body: JSON.stringify({ active }) }),
+  deleteSchedule: (id: string) => apiFetch<void>(`/api/schedules/${id}`, { method: 'DELETE' }),
+  runSchedule: (id: string) =>
+    apiFetch<{ ok: boolean; delivery: { id: string; title: string; kind: string } }>(`/api/schedules/${id}/run`, { method: 'POST' }),
+  getDeliveries: () => apiFetch<{ deliveries: Delivery[] }>('/api/schedules/deliveries/list'),
+  getDelivery: (id: string) => apiFetch<{ delivery: DeliveryFull }>(`/api/schedules/deliveries/${id}`),
 
   // Graveyard
   getGraveyard: () => apiFetch<{ products: Product[] }>('/api/graveyard'),
