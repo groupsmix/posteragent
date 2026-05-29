@@ -38,7 +38,7 @@ export interface PublishOutcome {
   error?: string
 }
 
-async function getSecret(env: Env, key: string): Promise<string | null> {
+export async function getSecret(env: Env, key: string): Promise<string | null> {
   if (env.SECRETS) {
     try {
       const v = await env.SECRETS.get(key)
