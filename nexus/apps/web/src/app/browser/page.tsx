@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Globe2, Loader2, ExternalLink } from 'lucide-react'
 import { api, API_BASE, type BrowseResult } from '@/lib/api'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
+import { VoiceInput } from '@/components/VoiceInput'
 
 export default function BrowserPage() {
   const [enabled, setEnabled] = useState<boolean | null>(null)
@@ -61,13 +62,20 @@ export default function BrowserPage() {
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">What should I look for? (optional)</label>
-            <input
-              value={instruction}
-              onChange={(e) => setInstruction(e.target.value)}
-              placeholder="e.g. summarize the pricing, or list the main headlines"
-              className="input w-full"
-              disabled={busy}
-            />
+            <div className="flex items-center gap-2">
+              <input
+                value={instruction}
+                onChange={(e) => setInstruction(e.target.value)}
+                placeholder="e.g. summarize the pricing, or list the main headlines"
+                className="input flex-1"
+                disabled={busy}
+              />
+              <VoiceInput
+                disabled={busy}
+                label="Voice"
+                onTranscript={(t) => setInstruction((prev) => (prev ? `${prev} ${t}` : t))}
+              />
+            </div>
           </div>
           <button
             type="submit"
