@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { KeyRound, Check, ExternalLink } from 'lucide-react'
+import { KeyRound, Check, ExternalLink, Gauge } from 'lucide-react'
 import { api, type ApiKeyInfo } from '@/lib/api'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
@@ -18,6 +18,9 @@ export default function ApiKeysPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<number | null>(null)
+  const [spend, setSpend] = useState<{ today: number; cap: number; cap_reached: boolean } | null>(null)
+  const [capDraft, setCapDraft] = useState('')
+  const [off, setOff] = useState<Record<string, boolean>>({})
 
   const load = () => {
     setLoading(true)
@@ -25,8 +28,30 @@ export default function ApiKeysPage() {
       .then((r) => setKeys(r.keys))
       .catch(() => setKeys([]))
       .finally(() => setLoading(false))
+    api.getSpend().then(setSpend).catch(() => setSpend(null))
+    api.getProviders()
+      .then((r) => setOff(Object.fromEntries(r.providers.map((p) => [p.secretKey, p.off]))))
+      .catch(() => setOff({}))
   }
   useEffect(load, [])
+
+  const saveCap = async () => {
+    const n = Number(capDraft)
+    if (!Number.isFinite(n) || n < 0) return
+    await api.setCap(n)
+    setCapDraft('')
+    api.getSpend().then(setSpend).catch(() => {})
+  }
+
+  const toggleProvider = async (secretKey: string) => {
+    const next = !off[secretKey]
+    setOff((o) => ({ ...o, [secretKey]: next }))
+    try {
+      await api.toggleProvider(secretKey, next)
+    } catch {
+      setOff((o) => ({ ...o, [secretKey]: !next }))
+    }
+  }
 
   const save = async () => {
     const payload = Object.fromEntries(
@@ -57,6 +82,41 @@ export default function ApiKeysPage() {
           <div className="text-sm text-muted-foreground">Loading…</div>
         ) : (
           <div className="max-w-2xl space-y-8">
+            {/* AI spend meter + daily cap */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Gauge className="h-4 w-4" />
+                <h3 className="text-sm font-semibold">AI spend (paid models)</h3>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold tabular-nums">${(spend?.today ?? 0).toFixed(2)}</span>
+                <span className="text-xs text-muted-foreground">
+                  used today{spend && spend.cap > 0 ? ` of $${spend.cap.toFixed(2)} cap` : ' · no cap set'}
+                </span>
+                {spend?.cap_reached && (
+                  <span className="text-xs text-amber-600 dark:text-amber-400">cap reached — using free models</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number" min={0} step={1}
+                  placeholder={spend && spend.cap > 0 ? String(spend.cap) : 'Daily cap in $ (0 = unlimited)'}
+                  value={capDraft}
+                  onChange={(e) => setCapDraft(e.target.value)}
+                  className="input w-56 text-sm"
+                />
+                <button
+                  onClick={saveCap}
+                  disabled={capDraft === ''}
+                  className="rounded-lg border border-border px-3 py-2 text-sm font-medium disabled:opacity-50"
+                >
+                  Set cap
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                When the cap is hit, paid models pause for the day and the free engines take over — your products still get built.
+              </p>
+            </div>
             {GROUP_ORDER.map((group) => {
               const items = keys.filter((k) => k.group === group)
               if (items.length === 0) return null
@@ -70,13 +130,25 @@ export default function ApiKeysPage() {
                     <div key={k.key} className="rounded-xl border border-border bg-card p-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <label className="text-sm font-medium">{k.label}</label>
-                        {k.configured ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                            <Check className="h-3 w-3" /> Set
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Not set</span>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {k.group === 'AI' && k.configured && (
+                            <button
+                              onClick={() => toggleProvider(k.key)}
+                              aria-pressed={!off[k.key]}
+                              title={off[k.key] ? 'Provider paused — click to resume' : 'Provider active — click to pause'}
+                              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${off[k.key] ? 'bg-muted' : 'bg-emerald-500'}`}
+                            >
+                              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${off[k.key] ? 'left-0.5' : 'left-[18px]'}`} />
+                            </button>
+                          )}
+                          {k.configured ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                              <Check className="h-3 w-3" /> Set
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Not set</span>
+                          )}
+                        </div>
                       </div>
                       <input
                         type="password"

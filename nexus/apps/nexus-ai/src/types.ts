@@ -31,6 +31,8 @@ export type AIProvider =
   | 'anthropic'
   | 'openai'
   | 'google'
+  | 'perplexity'
+  | 'mistral'
   | 'fal'
   | 'huggingface'
   | 'tavily'

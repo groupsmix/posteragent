@@ -4,7 +4,7 @@
 // AI Failover Engine - Handles all AI calls with automatic failover.
 
 import { Hono } from 'hono'
-import { runWithFailover } from './failover'
+import { runWithFailover, getSpendToday, getDailyCap } from './failover'
 import { generateImage } from './image'
 import { AI_REGISTRY } from './registry'
 import type { TaskType, AIRunTaskRequest, AIRunTaskResponse } from './types'
@@ -108,6 +108,52 @@ app.get('/registry', async (c) => {
     out[taskType] = rows.sort((a, b) => a.rank - b.rank)
   }
   return c.json({ registry: out })
+})
+
+// ============================================================
+// Cost meter + daily spend cap
+// ============================================================
+
+app.get('/spend', async (c) => {
+  const [today, cap] = await Promise.all([getSpendToday(c.env), getDailyCap(c.env)])
+  return c.json({ today, cap, cap_reached: cap > 0 && today >= cap })
+})
+
+// POST /cap { cap_usd } — set the daily paid-model spend cap (0 = no cap).
+app.post('/cap', async (c) => {
+  const { cap_usd } = await c.req.json<{ cap_usd?: number }>()
+  const n = Number(cap_usd)
+  if (!Number.isFinite(n) || n < 0) return c.json({ error: 'cap_usd must be >= 0' }, 400)
+  await c.env.CONFIG.put('ai_daily_cap_usd', String(n))
+  return c.json({ ok: true, cap: n })
+})
+
+// ============================================================
+// Per-provider ON/OFF — pause a model while keeping its key saved.
+// State lives in KV as provider_off:<SECRET_KEY> = 'true'.
+// ============================================================
+
+app.get('/providers', async (c) => {
+  const seen = new Set<string>()
+  const out: { secretKey: string; off: boolean }[] = []
+  for (const models of Object.values(AI_REGISTRY)) {
+    for (const m of models) {
+      if (!m.secretKey || seen.has(m.secretKey)) continue
+      seen.add(m.secretKey)
+      const off = (await c.env.CONFIG.get(`provider_off:${m.secretKey}`)) === 'true'
+      out.push({ secretKey: m.secretKey, off })
+    }
+  }
+  return c.json({ providers: out })
+})
+
+app.post('/providers/toggle', async (c) => {
+  const { secretKey, off } = await c.req.json<{ secretKey?: string; off?: boolean }>()
+  if (!secretKey) return c.json({ error: 'secretKey is required' }, 400)
+  const kvKey = `provider_off:${secretKey}`
+  if (off) await c.env.CONFIG.put(kvKey, 'true')
+  else await c.env.CONFIG.delete(kvKey)
+  return c.json({ ok: true, secretKey, off: Boolean(off) })
 })
 
 // ============================================================
