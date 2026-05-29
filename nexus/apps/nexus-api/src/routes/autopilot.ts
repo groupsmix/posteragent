@@ -3,6 +3,8 @@ import type { Env } from '../env'
 import { ProductWorkflow } from '../services/workflow-engine'
 import { buildListingPayload } from './publish'
 import { publishToPlatform } from '../services/publishers'
+import { getSetting, setSetting } from '../services/shared'
+import { safeJson } from '../services/shared'
 
 // ============================================================
 // Autopilot "money engine" — when ON, the CEO loops on its own:
@@ -14,20 +16,6 @@ import { publishToPlatform } from '../services/publishers'
 export const autopilotRoutes = new Hono<{ Bindings: Env }>()
 
 interface AutopilotExecCtx { waitUntil(p: Promise<unknown>): void }
-
-async function getSetting(env: Env, key: string): Promise<string | null> {
-  const row = await env.DB.prepare('SELECT value FROM settings WHERE key = ? LIMIT 1')
-    .bind(key).first<{ value: string }>().catch(() => null)
-  return row?.value ?? null
-}
-
-async function setSetting(env: Env, key: string, value: string): Promise<void> {
-  const now = new Date().toISOString()
-  await env.DB.prepare(
-    `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
-     ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?`,
-  ).bind(key, value, now, value, now).run()
-}
 
 async function log(env: Env, action: string, fields: { product_id?: string; niche?: string; domain_slug?: string; note?: string }) {
   await env.DB.prepare(
@@ -123,24 +111,8 @@ async function callAIJson(env: Env, prompt: string, taskType = 'research_market'
     }))
     if (!res.ok) return null
     const data = (await res.json()) as { output?: string }
-    return parseLooseJson(data.output ?? '')
+    return safeJson(data.output ?? '')
   } catch { return null }
-}
-
-// Models often wrap JSON in ```json fences or add prose around it. Strip the
-// fence and extract the first balanced object so we don't silently fail.
-function parseLooseJson(raw: string): unknown {
-  if (!raw) return null
-  let s = raw.trim()
-  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i)
-  if (fence) s = fence[1].trim()
-  try { return JSON.parse(s) } catch { /* fall through */ }
-  const start = s.indexOf('{')
-  const end = s.lastIndexOf('}')
-  if (start !== -1 && end > start) {
-    try { return JSON.parse(s.slice(start, end + 1)) } catch { /* ignore */ }
-  }
-  return null
 }
 
 // Normalize a niche for comparison: lowercase, strip punctuation, drop filler.

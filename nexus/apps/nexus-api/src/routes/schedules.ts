@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
 import { ProductWorkflow } from '../services/workflow-engine'
+import { callAISimple } from '../services/shared'
 
 // ============================================================
 // Scheduler — define a recurring AI task once ("every day write a blog
@@ -104,14 +105,7 @@ scheduleRoutes.get('/deliveries/:id', async (c) => {
 interface ScheduleExecCtx { waitUntil(p: Promise<unknown>): void }
 
 async function callAI(env: Env, prompt: string, outputFormat: 'text' | 'json' = 'text'): Promise<string> {
-  const res = await env.AI_WORKER.fetch(new Request('https://nexus-ai/task', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ taskType: 'generate_long_form', prompt, outputFormat, timeoutMs: 90000 }),
-  }))
-  if (!res.ok) throw new Error(`AI worker failed: ${res.status}`)
-  const data = (await res.json()) as { output?: string }
-  return data.output ?? ''
+  return callAISimple(env, prompt, { taskType: 'generate_long_form', outputFormat, timeoutMs: 90000 })
 }
 
 async function postWebhook(env: Env, payload: Record<string, unknown>): Promise<string> {

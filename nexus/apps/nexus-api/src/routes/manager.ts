@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
 import { ProductWorkflow } from '../services/workflow-engine'
+import { callAISimple, safeJson } from '../services/shared'
 
 export const managerRoutes = new Hono<{ Bindings: Env }>()
 
@@ -31,35 +32,10 @@ interface ManagerAction {
   detail?: string
 }
 
-function safeParse(raw: string): any {
-  // Pull a JSON object out of the model's reply, even if wrapped in prose/fences.
-  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
-  const candidate = fence ? fence[1] : raw
-  const start = candidate.indexOf('{')
-  const end = candidate.lastIndexOf('}')
-  if (start === -1 || end === -1 || end < start) return null
-  try {
-    return JSON.parse(candidate.slice(start, end + 1))
-  } catch {
-    return null
-  }
-}
+const safeParse = safeJson
 
 async function callAI(env: Env, prompt: string): Promise<string> {
-  const req = new Request('https://nexus-ai/task', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      taskType: 'manager_plan',
-      prompt,
-      outputFormat: 'json',
-      timeoutMs: 60000,
-    }),
-  })
-  const res = await env.AI_WORKER.fetch(req)
-  if (!res.ok) throw new Error(`AI worker failed: ${res.status}`)
-  const data = (await res.json()) as { output?: string }
-  return data.output ?? ''
+  return callAISimple(env, prompt, { taskType: 'manager_plan', outputFormat: 'json' })
 }
 
 // POST /manager/chat — the CEO Manager. Interprets a goal, plans products,
