@@ -25,7 +25,7 @@ import { agentRoutes } from './routes/agent'
 import { teamRoutes } from './routes/team'
 import { scheduleRoutes, runDueSchedules } from './routes/schedules'
 import { autopilotRoutes, runAutopilot } from './routes/autopilot'
-import { authRoutes, getAccessHash } from './routes/auth'
+import { authRoutes, getAccessHash, validateSessionToken } from './routes/auth'
 import { revenueRoutes } from './routes/revenue'
 import { marketingRoutes, runMarketing } from './routes/marketing'
 import { browserRoutes } from './routes/browser'
@@ -77,7 +77,9 @@ api.use('*', async (c, next) => {
   if (!hash) return next() // not protected yet
   const auth = c.req.header('Authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
-  if (token !== hash) return c.json({ error: 'Unauthorized', code: 'auth_required' }, 401)
+  if (!token) return c.json({ error: 'Unauthorized', code: 'auth_required' }, 401)
+  const valid = await validateSessionToken(c.env, token)
+  if (!valid) return c.json({ error: 'Unauthorized', code: 'auth_required' }, 401)
   return next()
 })
 
