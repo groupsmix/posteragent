@@ -306,6 +306,72 @@ export interface PublishItem {
   status: string
 }
 
+// Gumroad types
+export interface GumroadProductInfo {
+  id: string
+  name: string
+  description: string | null
+  price: number
+  currency: string
+  short_url: string
+  published: boolean
+  sales_count: number
+  sales_usd_cents: number
+  views_count: number
+}
+
+export interface GumroadSaleInfo {
+  id: string
+  email: string
+  price: number
+  product_id: string
+  product_name: string
+  created_at: string
+  refunded: boolean
+}
+
+export interface GumroadAnalyticsInfo {
+  product_id: string
+  views: number
+  sales: number
+  revenue_cents: number
+}
+
+// Scoring types
+export interface ProductScoreDetail {
+  titleScore: number
+  descriptionScore: number
+  completeness: number
+  priceScore: number
+  total: number
+}
+
+export interface QualityGateResult {
+  pass: boolean
+  issues: string[]
+  score: number
+}
+
+export interface ProductScoreResponse {
+  score: ProductScoreDetail
+  quality_gate: QualityGateResult
+  post_build_gate: QualityGateResult
+}
+
+export interface NicheScoreDetail {
+  demand: number
+  gap: number
+  priceRange: number
+  volume: number
+  total: number
+  recommendation: string
+}
+
+export interface NicheScoreResponse {
+  niche_score: NicheScoreDetail
+  quality_gate: QualityGateResult
+}
+
 const TOKEN_KEY = 'nexus_token'
 
 export function getToken(): string | null {
@@ -561,4 +627,31 @@ export const api = {
     }),
   disableAuth: (current: string) =>
     apiFetch<{ ok: boolean }>('/api/auth/disable', { method: 'POST', body: JSON.stringify({ current }) }),
+
+  // Gumroad integration
+  getGumroadProducts: () => apiFetch<{ products: GumroadProductInfo[] }>('/api/gumroad/products'),
+  createGumroadProduct: (data: { name: string; price: number; description?: string; id?: string }) =>
+    apiFetch<{ product: GumroadProductInfo }>('/api/gumroad/products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getGumroadSales: (opts?: { after?: string; before?: string; page?: number }) => {
+    const qs = new URLSearchParams()
+    if (opts?.after) qs.set('after', opts.after)
+    if (opts?.before) qs.set('before', opts.before)
+    if (opts?.page) qs.set('page', String(opts.page))
+    const q = qs.toString()
+    return apiFetch<{ sales: GumroadSaleInfo[] }>(`/api/gumroad/sales${q ? `?${q}` : ''}`)
+  },
+  getGumroadAnalytics: (productId: string) =>
+    apiFetch<{ analytics: GumroadAnalyticsInfo }>(`/api/gumroad/products/${productId}/analytics`),
+
+  // Scoring + quality gates
+  getProductScore: (id: string) =>
+    apiFetch<ProductScoreResponse>(`/api/products/${id}/score`),
+  scoreNiche: (niche: string) =>
+    apiFetch<NicheScoreResponse>('/api/niches/score', {
+      method: 'POST',
+      body: JSON.stringify({ niche }),
+    }),
 }

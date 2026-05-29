@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Bot, Send, Loader2, CheckCircle2, XCircle, ExternalLink, Wrench } from 'lucide-react'
-import { api, API_BASE, type ManagerMessage, type AgentStep } from '@/lib/api'
+import { api, API_BASE, type ManagerMessage, type AgentStep, type ProductScoreResponse } from '@/lib/api'
+import { ScoreBadge } from '@/components/shared/ScoreBadge'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 import { Markdown } from '@/components/Markdown'
 import { VoiceInput } from '@/components/VoiceInput'
@@ -30,6 +31,15 @@ const TOOL_LABELS: Record<string, string> = {
   publish_product: 'Published',
   key_status: 'Checked API keys',
   browse_web: 'Browsed the web',
+}
+
+function ProductScoreBadge({ productId }: { productId: string }) {
+  const [score, setScore] = useState<number | null>(null)
+  useEffect(() => {
+    api.getProductScore(productId).then((s: ProductScoreResponse) => setScore(s.score.total)).catch(() => {})
+  }, [productId])
+  if (score === null) return null
+  return <ScoreBadge score={score} />
 }
 
 export default function CeoManagerPage() {
@@ -124,12 +134,15 @@ export default function CeoManagerPage() {
                             )}
                           </span>
                           {s.product_id && (
-                            <Link
-                              href={`/review/${s.product_id}`}
-                              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                            >
-                              View <ExternalLink className="h-3 w-3" />
-                            </Link>
+                            <span className="flex shrink-0 items-center gap-1.5">
+                              <ProductScoreBadge productId={s.product_id} />
+                              <Link
+                                href={`/review/${s.product_id}`}
+                                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                              >
+                                View <ExternalLink className="h-3 w-3" />
+                              </Link>
+                            </span>
                           )}
                         </div>
                       ))}

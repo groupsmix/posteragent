@@ -4,12 +4,14 @@ export const runtime = 'edge'
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { api } from '@/lib/api'
+import { api, type QualityGateResult } from '@/lib/api'
 import type { WorkflowStatusResponse, WorkflowStep } from '@nexus/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Loader2, Check, X, Clock, AlertCircle, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { QualityGatePanel } from '@/components/shared/QualityGatePanel'
+import { ScoreBadge } from '@/components/shared/ScoreBadge'
 
 const STEP_LABELS: Record<string, string> = {
   research_market: '① Market Research',
@@ -69,9 +71,11 @@ function StepItem({ step, index }: { step: WorkflowStep; index: number }) {
 export default function WorkflowPage() {
   const params = useParams()
   const router = useRouter()
-  const [workflow, setWorkflow] = useState<WorkflowStatusResponse | null>(null)
+  const [workflow, setWorkflow] = useState<(WorkflowStatusResponse & { quality_gate_json?: string }) | null>(null)
   const [loading, setLoading] = useState(true)
   const [polling, setPolling] = useState(true)
+  const [productScore, setProductScore] = useState<number | null>(null)
+  const [qualityGate, setQualityGate] = useState<QualityGateResult | null>(null)
 
   const fetchWorkflow = async () => {
     try {
@@ -79,6 +83,13 @@ export default function WorkflowPage() {
       setWorkflow(data)
       if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
         setPolling(false)
+        // Fetch quality gate from the workflow run's quality_gate_json or score endpoint
+        if (data.product_id && data.status === 'completed') {
+          api.getProductScore(data.product_id).then((s) => {
+            setProductScore(s.score.total)
+            setQualityGate(s.post_build_gate)
+          }).catch(() => {})
+        }
       }
     } catch (err) {
       console.error('Error fetching workflow:', err)
@@ -162,11 +173,22 @@ export default function WorkflowPage() {
           ))}
         </div>
 
+        {workflow.status === 'completed' && qualityGate && (
+          <div className="mt-6">
+            <QualityGatePanel gate={qualityGate} title="Post-Build Quality Gate" />
+          </div>
+        )}
+
         {workflow.status === 'completed' && (
           <Card className="mt-8 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
             <CardContent className="p-6 text-center">
               <Check className="w-12 h-12 text-green-500 mx-auto mb-4" />
               <h2 className="text-xl font-bold text-green-700 dark:text-green-300 mb-2">Workflow Complete!</h2>
+              {typeof productScore === 'number' && (
+                <div className="mb-3 flex justify-center">
+                  <ScoreBadge score={productScore} label="100" size="md" />
+                </div>
+              )}
               <p className="text-green-600 dark:text-green-400 mb-4">Your product is ready for review.</p>
               <Link href={`/review/${workflow.product_id}`}>
                 <Button className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600">
