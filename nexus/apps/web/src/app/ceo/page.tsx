@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Bot, Send, Loader2, CheckCircle2, XCircle, ExternalLink, Wrench } from 'lucide-react'
 import { api, type ManagerMessage, type AgentStep } from '@/lib/api'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
+import { Markdown } from '@/components/Markdown'
 
 interface ChatTurn extends ManagerMessage {
   steps?: AgentStep[]
@@ -80,14 +81,19 @@ export default function CeoManagerPage() {
                   className={
                     t.role === 'user'
                       ? 'max-w-[80%] rounded-2xl rounded-br-sm bg-gradient-primary px-4 py-2.5 text-sm text-primary-foreground'
-                      : 'max-w-[85%] rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-2.5 text-sm'
+                      : 'max-w-[85%] rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-3 text-sm'
                   }
                 >
-                  <p className="whitespace-pre-wrap">{t.content}</p>
+                  {t.role === 'user' ? (
+                    <p className="whitespace-pre-wrap">{t.content}</p>
+                  ) : (
+                    <Markdown>{t.content}</Markdown>
+                  )}
                   {t.steps && t.steps.length > 0 && (
-                    <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
+                    <div className="mt-3 space-y-1.5 border-t border-border/60 pt-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Actions taken</div>
                       {t.steps.map((s, j) => (
-                        <div key={j} className="flex items-start gap-2 text-xs">
+                        <div key={j} className="flex items-start gap-2 rounded-lg border border-border/60 bg-background/40 px-2.5 py-2 text-xs">
                           {s.ok ? (
                             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                           ) : (
@@ -97,12 +103,12 @@ export default function CeoManagerPage() {
                             <span className="inline-flex items-center gap-1 font-medium">
                               <Wrench className="h-3 w-3" /> {TOOL_LABELS[s.tool] || s.tool}
                             </span>
-                            <span className="block text-muted-foreground">{s.summary}</span>
+                            <span className="mt-0.5 block text-muted-foreground">{s.summary}</span>
                           </span>
                           {s.product_id && (
                             <Link
                               href={`/review/${s.product_id}`}
-                              className="inline-flex shrink-0 items-center gap-1 text-muted-foreground hover:text-foreground"
+                              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-muted-foreground hover:text-foreground hover:bg-muted"
                             >
                               View <ExternalLink className="h-3 w-3" />
                             </Link>
