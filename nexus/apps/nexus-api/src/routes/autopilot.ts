@@ -114,23 +114,72 @@ autopilotRoutes.post('/run', async (c) => {
 // The loop
 // ============================================================
 
-async function callAIJson(env: Env, prompt: string): Promise<unknown> {
+async function callAIJson(env: Env, prompt: string, taskType = 'research_market'): Promise<unknown> {
   try {
     const res = await env.AI_WORKER.fetch(new Request('https://nexus-ai/task', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ taskType: 'niche_finder', prompt, outputFormat: 'json', timeoutMs: 60000 }),
+      body: JSON.stringify({ taskType, prompt, outputFormat: 'json', timeoutMs: 60000 }),
     }))
     if (!res.ok) return null
     const data = (await res.json()) as { output?: string }
-    try { return JSON.parse(data.output ?? '') } catch { return null }
+    return parseLooseJson(data.output ?? '')
   } catch { return null }
 }
 
+// Models often wrap JSON in ```json fences or add prose around it. Strip the
+// fence and extract the first balanced object so we don't silently fail.
+function parseLooseJson(raw: string): unknown {
+  if (!raw) return null
+  let s = raw.trim()
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  if (fence) s = fence[1].trim()
+  try { return JSON.parse(s) } catch { /* fall through */ }
+  const start = s.indexOf('{')
+  const end = s.lastIndexOf('}')
+  if (start !== -1 && end > start) {
+    try { return JSON.parse(s.slice(start, end + 1)) } catch { /* ignore */ }
+  }
+  return null
+}
+
+// Normalize a niche for comparison: lowercase, strip punctuation, drop filler.
+const FILLER = new Set(['the', 'a', 'an', 'for', 'and', 'of', 'to', 'in', 'with', 'your', 'my', 'digital', 'product', 'products', 'premium'])
+function nicheTokens(s: string): Set<string> {
+  return new Set(
+    s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w && !FILLER.has(w)),
+  )
+}
+// Treat two niches as duplicates when their significant words overlap heavily.
+function isNearDuplicate(candidate: string, existing: string[]): boolean {
+  const a = nicheTokens(candidate)
+  if (a.size === 0) return true // empty / all-filler → reject
+  for (const e of existing) {
+    const b = nicheTokens(e)
+    if (b.size === 0) continue
+    let inter = 0
+    for (const w of a) if (b.has(w)) inter++
+    const union = new Set([...a, ...b]).size
+    if (inter / union >= 0.6) return true
+  }
+  return false
+}
+// Reject lazy/generic niches like "<domain> essentials".
+function isGeneric(s: string): boolean {
+  return /\b(essentials|stuff|things|bundle|misc|general|various)\b/i.test(s) || nicheTokens(s).size < 2
+}
+
 // Research a niche (prefer a fresh trend alert, else ask the AI) and return
-// {domainSlug, categorySlug, niche}.
+// {domainSlug, categorySlug, niche}. De-duplicates against niches already
+// built so autopilot stops rebuilding near-identical products.
 async function pickNiche(env: Env): Promise<{ domainSlug: string; categorySlug: string; niche: string } | null> {
-  // Prefer an unused trend alert in an active domain.
+  // What's already been made — so we can avoid repeating it.
+  const existingRows = await env.DB.prepare(
+    `SELECT niche FROM products WHERE niche IS NOT NULL AND niche != '' ORDER BY created_at DESC LIMIT 60`,
+  ).all<{ niche: string }>().catch(() => ({ results: [] as { niche: string }[] }))
+  const existing = (existingRows.results ?? []).map((r) => r.niche)
+
+  // Prefer an unused trend alert in an active domain (these are already specific).
   const alert = await env.DB.prepare(
     `SELECT t.id AS alert_id, t.trend_keyword, t.suggested_niche, d.slug AS domain_slug
        FROM trend_alerts t JOIN domains d ON d.id = t.domain_id
@@ -138,21 +187,44 @@ async function pickNiche(env: Env): Promise<{ domainSlug: string; categorySlug: 
       ORDER BY t.trend_score DESC LIMIT 1`,
   ).first<{ alert_id: string; trend_keyword: string; suggested_niche: string | null; domain_slug: string }>().catch(() => null)
 
-  let domainSlug: string
-  let niche: string
   if (alert) {
-    await env.DB.prepare(`UPDATE trend_alerts SET status = 'used' WHERE id = ?`).bind(alert.alert_id).run().catch(() => void 0)
-    domainSlug = alert.domain_slug
-    niche = alert.suggested_niche || alert.trend_keyword
-  } else {
-    const dom = await env.DB.prepare(`SELECT slug FROM domains WHERE is_active = 1 ORDER BY RANDOM() LIMIT 1`)
-      .first<{ slug: string }>().catch(() => null)
-    if (!dom) return null
-    domainSlug = dom.slug
-    const j = (await callAIJson(env, `Suggest ONE specific, high-demand digital-product niche for the "${domainSlug}" domain. Return JSON {niche:string}.`)) as { niche?: string } | null
-    niche = j?.niche || `${domainSlug} essentials`
+    const niche = alert.suggested_niche || alert.trend_keyword
+    if (niche && !isNearDuplicate(niche, existing)) {
+      await env.DB.prepare(`UPDATE trend_alerts SET status = 'used' WHERE id = ?`).bind(alert.alert_id).run().catch(() => void 0)
+      return finishPick(env, alert.domain_slug, niche)
+    }
   }
 
+  // Otherwise ask the researcher (Perplexity Sonar when a key is set, else
+  // the free engine) for a specific, validated niche — and tell it what to
+  // avoid so it doesn't hand back something we already built.
+  const dom = await env.DB.prepare(`SELECT slug FROM domains WHERE is_active = 1 ORDER BY RANDOM() LIMIT 1`)
+    .first<{ slug: string }>().catch(() => null)
+  if (!dom) return null
+  const domainSlug = dom.slug
+
+  const avoid = existing.slice(0, 25)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const prompt = [
+      `You are a market researcher. Propose ONE specific, validated, high-demand digital-product niche for the "${domainSlug}" domain.`,
+      `Requirements: name a concrete target audience AND the specific outcome/problem solved (e.g. "Notion CRM template for freelance designers", not "business templates").`,
+      `It must be DIFFERENT from everything in this avoid-list (no rephrasings, no synonyms):`,
+      avoid.length ? avoid.map((n) => `- ${n}`).join('\n') : '- (none yet)',
+      `Do NOT use vague words like "essentials", "bundle", "stuff" or "general".`,
+      `Return strict JSON: {"niche": string, "audience": string, "rationale": string}.`,
+    ].join('\n')
+    const j = (await callAIJson(env, prompt)) as { niche?: string } | null
+    const niche = (j?.niche || '').trim()
+    if (niche && !isGeneric(niche) && !isNearDuplicate(niche, existing)) {
+      return finishPick(env, domainSlug, niche)
+    }
+  }
+
+  // Both attempts failed → skip this slot rather than build a generic dupe.
+  return null
+}
+
+async function finishPick(env: Env, domainSlug: string, niche: string) {
   const cat = await env.DB.prepare(
     `SELECT c.slug FROM categories c JOIN domains d ON d.id = c.domain_id WHERE d.slug = ? ORDER BY RANDOM() LIMIT 1`,
   ).bind(domainSlug).first<{ slug: string }>().catch(() => null)
