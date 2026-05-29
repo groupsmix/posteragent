@@ -13,6 +13,7 @@ import { ScoreBadge } from '@/components/shared/ScoreBadge'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 import { Markdown } from '@/components/Markdown'
 import { VoiceInput } from '@/components/VoiceInput'
+import { LiveBrowserPanel } from '@/components/LiveBrowserPanel'
 
 interface ChatTurn extends ManagerMessage {
   steps?: AgentStep[]
@@ -251,6 +252,7 @@ export default function CeoManagerPage() {
   const [busy, setBusy] = useState(false)
   const [actionHistory, setActionHistory] = useState<ActionHistoryEntry[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [browserOpen, setBrowserOpen] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -302,7 +304,9 @@ export default function CeoManagerPage() {
           open={historyOpen}
           onToggle={() => setHistoryOpen(!historyOpen)}
         />
-        <div className={`mx-auto flex h-[calc(100vh-200px)] flex-col transition-all ${historyOpen ? 'max-w-2xl mr-80' : 'max-w-3xl'}`}>
+        <div className={`flex h-[calc(100vh-200px)] gap-4 transition-all ${historyOpen ? 'mr-80' : ''}`}>
+        {/* Chat column */}
+        <div className={`flex flex-col transition-all ${browserOpen ? 'w-1/2' : 'mx-auto max-w-3xl w-full'}`}>
           {/* Messages */}
           <div className="flex-1 space-y-4 overflow-y-auto pr-1 pb-4">
             {turns.map((t, i) => (
@@ -413,6 +417,14 @@ export default function CeoManagerPage() {
             }}
             className="flex items-center gap-2 border-t border-border pt-3"
           >
+            <button
+              type="button"
+              onClick={() => setBrowserOpen((v) => !v)}
+              className={`rounded-lg p-2 transition-colors ${browserOpen ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+              title={browserOpen ? 'Close browser' : 'Open live browser'}
+            >
+              <Globe className="h-4 w-4" />
+            </button>
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -433,6 +445,14 @@ export default function CeoManagerPage() {
               <Send className="h-4 w-4" /> Send
             </button>
           </form>
+        </div>
+
+        {/* Live browser column */}
+        {browserOpen && (
+          <div className="w-1/2 flex flex-col">
+            <LiveBrowserPanel className="flex-1" />
+          </div>
+        )}
         </div>
       </PageBody>
     </>
