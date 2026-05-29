@@ -85,7 +85,7 @@ export default function ReviewPage() {
             <div className="rounded-full border border-border bg-card px-3 py-1.5 text-sm">
               AI score{' '}
               <span className="font-mono font-bold ml-1 text-gradient">
-                {p.ai_score.toFixed(1)}
+                {typeof p.ai_score === 'number' ? p.ai_score.toFixed(1) : '—'}
               </span>
               <span className="text-muted-foreground">/10</span>
             </div>
@@ -199,7 +199,7 @@ export default function ReviewPage() {
             <Section title="Pricing">
               <div className="flex items-center justify-between">
                 <div className="text-3xl font-bold tabular-nums">
-                  ${p.price.toFixed(0)}
+                  ${typeof p.price === 'number' ? p.price.toFixed(0) : '—'}
                   <span className="text-sm font-normal text-muted-foreground ml-1">
                     {p.currency}
                   </span>
