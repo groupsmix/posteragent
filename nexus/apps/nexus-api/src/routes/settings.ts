@@ -77,3 +77,39 @@ settingsRoutes.patch('/:key', async (c) => {
     return c.json({ error: 'Failed to update setting' }, 500)
   }
 })
+
+// ============================================================
+// User Preferences (sidebar order, theme, dashboard layout)
+// ============================================================
+
+// GET /settings/preference/:key
+settingsRoutes.get('/preference/:key', async (c) => {
+  try {
+    const key = c.req.param('key')
+    const row = await c.env.DB.prepare(
+      'SELECT key, value FROM user_preferences WHERE key = ?',
+    ).bind(key).first<{ key: string; value: string }>()
+    if (!row) return c.json({ error: 'Not found' }, 404)
+    return c.json({ key: row.key, value: row.value })
+  } catch (err) {
+    console.error('Error fetching preference:', err)
+    return c.json({ error: 'Failed to fetch preference' }, 500)
+  }
+})
+
+// POST /settings/preference - Upsert a preference
+settingsRoutes.post('/preference', async (c) => {
+  try {
+    const { key, value } = await c.req.json() as { key?: string; value?: string }
+    if (!key) return c.json({ error: 'key is required' }, 400)
+    const now = new Date().toISOString()
+    const val = typeof value === 'string' ? value : JSON.stringify(value)
+    await c.env.DB.prepare(
+      `INSERT INTO user_preferences (id, key, value, updated_at) VALUES (lower(hex(randomblob(8))), ?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?`,
+    ).bind(key, val, now, val, now).run()
+    return c.json({ ok: true })
+  } catch (err) {
+    console.error('Error saving preference:', err)
+    return c.json({ error: 'Failed to save preference' }, 500)
+  }
+})

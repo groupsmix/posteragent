@@ -238,6 +238,14 @@ TOOLS:
 - {"tool":"publish_product","args":{"product":"<ref>"}}
 - {"tool":"key_status","args":{}}  // which provider API keys are configured
 - {"tool":"browse_web","args":{"url":"https://...","instruction":"<what to find on the page>"}}  // open a real web page in a headless browser, read it, and screenshot it
+- {"tool":"update_settings","args":{"key":"<setting_key>","value":"<new_value>"}}  // update a dashboard setting
+- {"tool":"reorder_sidebar","args":{"sections":[{"title":"...","items":[{"to":"/path","label":"Label"}]}]}}  // rearrange sidebar sections
+- {"tool":"manage_domain","args":{"action":"create|update|delete","slug":"...","name":"...","categories":[]}}  // CRUD domains & categories
+- {"tool":"manage_schedule","args":{"action":"create|update|delete|toggle","id":"...","schedule":{"name":"...","task_type":"product|blog","frequency":"daily|weekly","topic":"..."}}}  // manage scheduled tasks
+- {"tool":"bulk_action","args":{"action":"approve_all|reject_all|delete_all","filter":{"status":"...","domain":"..."}}}  // batch-update products
+- {"tool":"change_theme","args":{"theme":"dark|light|auto"}}  // switch dashboard theme
+- {"tool":"export_data","args":{"type":"products|sales|analytics","format":"csv|json"}}  // generate a data export
+- {"tool":"dashboard_layout","args":{"layout":"compact|expanded|minimal"}}  // change dashboard layout density
 
 When you have enough to answer, respond with: {"reply":"<your message to the owner>"}
 
@@ -400,6 +408,199 @@ Respond with ONLY one JSON object (a tool call or a final {"reply"}).`
         }
         steps.push(step)
         scratch.push(`${tool} → ${step.summary}`)
+        continue
+      }
+
+      // ---------- update_settings ----------
+      if (tool === 'update_settings') {
+        const key = typeof args.key === 'string' ? args.key : ''
+        const value = args.value
+        if (!key) { scratch.push('update_settings → no key'); steps.push({ tool, args, ok: false, summary: 'No setting key provided.' }); continue }
+        const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value ?? '')
+        const now = new Date().toISOString()
+        await c.env.DB.prepare(
+          `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?`
+        ).bind(key, stringValue, now, stringValue, now).run()
+        const summary = `Updated setting "${key}" to "${stringValue}".`
+        steps.push({ tool, args, ok: true, summary })
+        scratch.push(`update_settings → ${summary}`)
+        continue
+      }
+
+      // ---------- reorder_sidebar ----------
+      if (tool === 'reorder_sidebar') {
+        const sections = Array.isArray(args.sections) ? args.sections : []
+        if (sections.length === 0) { scratch.push('reorder_sidebar → empty'); steps.push({ tool, args, ok: false, summary: 'No sections provided.' }); continue }
+        const now = new Date().toISOString()
+        const val = JSON.stringify(sections)
+        await c.env.DB.prepare(
+          `INSERT INTO user_preferences (id, key, value, updated_at) VALUES (lower(hex(randomblob(8))), 'sidebar_order', ?, ?) ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?`
+        ).bind(val, now, val, now).run()
+        steps.push({ tool, args, ok: true, summary: `Sidebar reordered with ${sections.length} section(s).` })
+        scratch.push(`reorder_sidebar → saved ${sections.length} sections`)
+        continue
+      }
+
+      // ---------- manage_domain ----------
+      if (tool === 'manage_domain') {
+        const action = typeof args.action === 'string' ? args.action : ''
+        const slug = typeof args.slug === 'string' ? args.slug : ''
+        const name = typeof args.name === 'string' ? args.name : ''
+        const categories = Array.isArray(args.categories) ? args.categories : []
+        const now = new Date().toISOString()
+        let summary = ''
+        if (action === 'create') {
+          if (!slug || !name) { summary = 'Need slug and name to create a domain.'; steps.push({ tool, args, ok: false, summary }); scratch.push(`manage_domain → ${summary}`); continue }
+          const id = crypto.randomUUID()
+          await c.env.DB.prepare(`INSERT INTO domains (id, name, slug, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind(id, name, slug, now, now).run()
+          for (const cat of categories) {
+            const catName = typeof cat === 'string' ? cat : (cat as Record<string, unknown>).name as string ?? ''
+            const catSlug = typeof cat === 'string' ? cat.toLowerCase().replace(/[^a-z0-9]+/g, '-') : (cat as Record<string, unknown>).slug as string ?? catName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+            if (catName) await c.env.DB.prepare(`INSERT INTO categories (id, domain_id, name, slug, created_at) VALUES (lower(hex(randomblob(8))), ?, ?, ?, ?)`).bind(id, catName, catSlug, now).run()
+          }
+          await c.env.CONFIG.delete('config:domains')
+          summary = `Created domain "${name}" (${slug})${categories.length ? ` with ${categories.length} categories` : ''}.`
+        } else if (action === 'update') {
+          if (!slug) { summary = 'Need slug to update.'; steps.push({ tool, args, ok: false, summary }); scratch.push(`manage_domain → ${summary}`); continue }
+          const sets: string[] = ['updated_at = ?']; const vals: unknown[] = [now]
+          if (name) { sets.push('name = ?'); vals.push(name) }
+          vals.push(slug)
+          await c.env.DB.prepare(`UPDATE domains SET ${sets.join(', ')} WHERE slug = ?`).bind(...vals).run()
+          await c.env.CONFIG.delete('config:domains')
+          summary = `Updated domain "${slug}".`
+        } else if (action === 'delete') {
+          if (!slug) { summary = 'Need slug to delete.'; steps.push({ tool, args, ok: false, summary }); scratch.push(`manage_domain → ${summary}`); continue }
+          await c.env.DB.prepare('DELETE FROM domains WHERE slug = ?').bind(slug).run()
+          await c.env.CONFIG.delete('config:domains')
+          summary = `Deleted domain "${slug}".`
+        } else {
+          summary = `Unknown action "${action}". Use create, update, or delete.`
+          steps.push({ tool, args, ok: false, summary }); scratch.push(`manage_domain → ${summary}`); continue
+        }
+        steps.push({ tool, args, ok: true, summary })
+        scratch.push(`manage_domain → ${summary}`)
+        continue
+      }
+
+      // ---------- manage_schedule ----------
+      if (tool === 'manage_schedule') {
+        const action = typeof args.action === 'string' ? args.action : ''
+        const id = typeof args.id === 'string' ? args.id : ''
+        const sched = (args.schedule && typeof args.schedule === 'object') ? args.schedule as Record<string, unknown> : {}
+        const now = new Date().toISOString()
+        let summary = ''
+        if (action === 'create') {
+          const name = typeof sched.name === 'string' ? sched.name : 'Untitled Schedule'
+          const newId = crypto.randomUUID()
+          const taskType = sched.task_type === 'product' ? 'product' : 'blog'
+          const frequency = sched.frequency === 'weekly' ? 'weekly' : 'daily'
+          await c.env.DB.prepare(
+            `INSERT INTO schedules (id, name, task_type, topic, instructions, frequency, active, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)`
+          ).bind(newId, name, taskType, typeof sched.topic === 'string' ? sched.topic : null, typeof sched.instructions === 'string' ? sched.instructions : null, frequency, now).run()
+          summary = `Created schedule "${name}" (${frequency}).`
+        } else if (action === 'toggle') {
+          if (!id) { summary = 'Need schedule id to toggle.'; steps.push({ tool, args, ok: false, summary }); scratch.push(`manage_schedule → ${summary}`); continue }
+          const row = await c.env.DB.prepare('SELECT active FROM schedules WHERE id = ?').bind(id).first<{ active: number }>()
+          const newVal = row ? (row.active ? 0 : 1) : 1
+          await c.env.DB.prepare('UPDATE schedules SET active = ? WHERE id = ?').bind(newVal, id).run()
+          summary = `Toggled schedule ${id.slice(0, 8)} to ${newVal ? 'active' : 'paused'}.`
+        } else if (action === 'update') {
+          if (!id) { summary = 'Need schedule id to update.'; steps.push({ tool, args, ok: false, summary }); scratch.push(`manage_schedule → ${summary}`); continue }
+          const sets: string[] = []; const vals: unknown[] = []
+          if (typeof sched.name === 'string') { sets.push('name = ?'); vals.push(sched.name) }
+          if (typeof sched.topic === 'string') { sets.push('topic = ?'); vals.push(sched.topic) }
+          if (typeof sched.frequency === 'string') { sets.push('frequency = ?'); vals.push(sched.frequency) }
+          if (sets.length) { vals.push(id); await c.env.DB.prepare(`UPDATE schedules SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run() }
+          summary = `Updated schedule ${id.slice(0, 8)}.`
+        } else if (action === 'delete') {
+          if (!id) { summary = 'Need schedule id to delete.'; steps.push({ tool, args, ok: false, summary }); scratch.push(`manage_schedule → ${summary}`); continue }
+          await c.env.DB.prepare('DELETE FROM schedules WHERE id = ?').bind(id).run()
+          summary = `Deleted schedule ${id.slice(0, 8)}.`
+        } else {
+          summary = `Unknown action "${action}".`; steps.push({ tool, args, ok: false, summary }); scratch.push(`manage_schedule → ${summary}`); continue
+        }
+        steps.push({ tool, args, ok: true, summary })
+        scratch.push(`manage_schedule → ${summary}`)
+        continue
+      }
+
+      // ---------- bulk_action ----------
+      if (tool === 'bulk_action') {
+        const action = typeof args.action === 'string' ? args.action : ''
+        const filter = (args.filter && typeof args.filter === 'object') ? args.filter as Record<string, unknown> : {}
+        const now = new Date().toISOString()
+        let where = '1=1'; const binds: unknown[] = []
+        if (typeof filter.status === 'string') { where += ' AND status = ?'; binds.push(filter.status) }
+        if (typeof filter.domain === 'string') {
+          where += ' AND domain_id IN (SELECT id FROM domains WHERE slug = ?)'; binds.push(filter.domain)
+        }
+        let summary = ''
+        if (action === 'approve_all') {
+          const r = await c.env.DB.prepare(`UPDATE products SET status = 'approved', updated_at = ? WHERE ${where}`).bind(now, ...binds).run()
+          summary = `Approved ${r.meta.changes} product(s).`
+        } else if (action === 'reject_all') {
+          const r = await c.env.DB.prepare(`UPDATE products SET status = 'rejected', graveyard_at = ?, graveyard_reason = 'Bulk rejected by CEO', updated_at = ? WHERE ${where}`).bind(now, now, ...binds).run()
+          summary = `Rejected ${r.meta.changes} product(s).`
+        } else if (action === 'delete_all') {
+          const r = await c.env.DB.prepare(`DELETE FROM products WHERE ${where}`).bind(...binds).run()
+          summary = `Deleted ${r.meta.changes} product(s).`
+        } else {
+          summary = `Unknown bulk action "${action}".`; steps.push({ tool, args, ok: false, summary }); scratch.push(`bulk_action → ${summary}`); continue
+        }
+        steps.push({ tool, args, ok: true, summary })
+        scratch.push(`bulk_action → ${summary}`)
+        continue
+      }
+
+      // ---------- change_theme ----------
+      if (tool === 'change_theme') {
+        const theme = typeof args.theme === 'string' ? args.theme : 'dark'
+        const now = new Date().toISOString()
+        await c.env.DB.prepare(
+          `INSERT INTO user_preferences (id, key, value, updated_at) VALUES (lower(hex(randomblob(8))), 'theme', ?, ?) ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?`
+        ).bind(theme, now, theme, now).run()
+        steps.push({ tool, args, ok: true, summary: `Theme changed to "${theme}".` })
+        scratch.push(`change_theme → ${theme}`)
+        continue
+      }
+
+      // ---------- export_data ----------
+      if (tool === 'export_data') {
+        const dataType = typeof args.type === 'string' ? args.type : 'products'
+        const format = typeof args.format === 'string' ? args.format : 'json'
+        let rows: Record<string, unknown>[] = []
+        if (dataType === 'products') {
+          const r = await c.env.DB.prepare('SELECT id, name, niche, status, ai_score, created_at FROM products ORDER BY created_at DESC LIMIT 500').all<Record<string, unknown>>()
+          rows = r.results ?? []
+        } else if (dataType === 'sales' || dataType === 'analytics') {
+          const r = await c.env.DB.prepare('SELECT id, name, status, ai_score, revenue_estimate, created_at FROM products WHERE status = \'published\' ORDER BY created_at DESC LIMIT 500').all<Record<string, unknown>>()
+          rows = r.results ?? []
+        }
+        let content: string
+        if (format === 'csv' && rows.length) {
+          const headers = Object.keys(rows[0])
+          const csvRows = rows.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','))
+          content = [headers.join(','), ...csvRows].join('\n')
+        } else {
+          content = JSON.stringify(rows, null, 2)
+        }
+        const key = `exports/${dataType}_${Date.now()}.${format}`
+        await c.env.ASSETS.put(key, content, { httpMetadata: { contentType: format === 'csv' ? 'text/csv' : 'application/json' } })
+        const downloadUrl = `/api/assets/r2/${key}`
+        steps.push({ tool, args, ok: true, summary: `Exported ${rows.length} ${dataType} rows as ${format.toUpperCase()}: ${downloadUrl}` })
+        scratch.push(`export_data → ${rows.length} rows → ${downloadUrl}`)
+        continue
+      }
+
+      // ---------- dashboard_layout ----------
+      if (tool === 'dashboard_layout') {
+        const layout = typeof args.layout === 'string' ? args.layout : 'expanded'
+        const now = new Date().toISOString()
+        await c.env.DB.prepare(
+          `INSERT INTO user_preferences (id, key, value, updated_at) VALUES (lower(hex(randomblob(8))), 'dashboard_layout', ?, ?) ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?`
+        ).bind(layout, now, layout, now).run()
+        steps.push({ tool, args, ok: true, summary: `Dashboard layout set to "${layout}".` })
+        scratch.push(`dashboard_layout → ${layout}`)
         continue
       }
 

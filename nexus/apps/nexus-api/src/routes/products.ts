@@ -4,6 +4,7 @@ import type { ProductFilters } from '../types'
 import { buildZip } from '../services/zip'
 import { generateDeliverableForProduct } from '../services/deliverable'
 import { RECIPE_OPTIONS, getRecipe } from '../services/recipes'
+import { publishProductToGumroad } from '../services/gumroad-publisher'
 
 export const productRoutes = new Hono<{ Bindings: Env }>()
 
@@ -517,5 +518,24 @@ productRoutes.delete('/:id', async (c) => {
   } catch (err) {
     console.error('Error deleting product:', err)
     return c.json({ error: 'Failed to delete product' }, 500)
+  }
+})
+
+// POST /products/:id/publish-gumroad - Manual Gumroad publish trigger
+productRoutes.post('/:id/publish-gumroad', async (c) => {
+  try {
+    const productId = c.req.param('id')
+    const result = await publishProductToGumroad(c.env, productId)
+    if (!result.ok) {
+      return c.json({ error: result.error }, 502)
+    }
+    return c.json({
+      ok: true,
+      gumroad_product_id: result.gumroad_product_id,
+      gumroad_url: result.gumroad_url,
+    })
+  } catch (err) {
+    console.error('Error publishing to Gumroad:', err)
+    return c.json({ error: 'Failed to publish to Gumroad' }, 500)
   }
 })

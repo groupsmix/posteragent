@@ -114,6 +114,7 @@ export interface Settings {
   default_language: string
   ceo_review_required: boolean
   auto_publish_after_approval: boolean
+  auto_publish_gumroad: boolean
   trend_radar_enabled: boolean
   trend_radar_hour: number
   winner_tracking_enabled: boolean

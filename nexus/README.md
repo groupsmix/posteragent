@@ -1,148 +1,137 @@
-# NEXUS - AI Product Creation Platform
+# NEXUS — AI Product Engine
 
-> Build, optimize, and publish digital products with AI-powered workflows
+Solo-owner dashboard for building, scoring, and publishing digital products with AI.
 
-## Architecture
+## Stack
 
-```
-nexus/
-├── apps/
-│   ├── nexus-api/          # Main API (Cloudflare Worker + Hono.js)
-│   ├── nexus-ai/          # AI Failover Engine (25+ models)
-│   └── web/               # Next.js 14 Frontend (shadcn/ui)
-├── packages/
-│   ├── types/             # Shared TypeScript types
-│   └── prompts/           # 8-layer prompt architecture
-├── migrations/             # D1 database migrations
-└── setup/                 # One-click Cloudflare setup
-```
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 14, Tailwind CSS, shadcn/ui |
-| API | Hono.js, Cloudflare Workers |
-| AI | DeepSeek, Claude, Gemini, FLUX, Suno, Tavily |
+| Layer | Service |
+|-------|---------|
+| Frontend | Next.js 14 + Tailwind + shadcn/ui → Cloudflare Pages |
+| API | Hono.js → Cloudflare Worker (`nexus-api`) |
+| AI Router | Cloudflare Worker (`nexus-ai`) — multi-provider failover |
 | Database | Cloudflare D1 (SQLite) |
-| Cache | Cloudflare KV |
-| Storage | Cloudflare R2 + Images |
-| Secrets | Cloudflare Secrets Store |
+| Cache / Auth | Cloudflare KV (`nexus-config`) |
+| File Storage | Cloudflare R2 (`nexus-assets`) |
+| Live Browser | Hyperbeam (free tier, 1 concurrent session) |
 
-## Features
+## Live URLs
 
-- **15-Step AI Workflow**: Market research → Content generation → Platform optimization → Publishing
-- **25+ AI Models**: Automatic failover when rate limits hit
-- **Multi-Platform**: Etsy, Gumroad, Shopify, Amazon templates
-- **Social Media**: Instagram, TikTok, YouTube, Twitter content
-- **Trend Radar**: Daily AI-powered trend detection
-- **Winner Patterns**: Learn from approved products
-- **Graveyard**: Auto-recycle rejected products
+| What | URL |
+|------|-----|
+| Dashboard | https://nexus-web-cl2.pages.dev |
+| API | https://nexus-api.professional-inbox-simo.workers.dev |
+| Health | https://nexus-api.professional-inbox-simo.workers.dev/health |
 
-## Quick Start
+Dashboard password: set via the `/api/auth/setup` endpoint on first visit.
 
-### 1. One-Click Setup (Windows)
-```powershell
-cd nexus
-.\setup\setup.ps1
+## Secrets
+
+Every feature is gated behind its credential. Missing credential = feature disabled (never faked).
+
+| Secret | Where | Unlocks |
+|--------|-------|---------|
+| `DEEPSEEK_API_KEY` | Worker secret | Primary AI model |
+| `GROQ_API_KEY` | Worker secret | Fast AI failover |
+| `GUMROAD_ACCESS_TOKEN` | Worker secret or KV `secret:*` | Publish to Gumroad |
+| `SHOPIFY_STORE` + `SHOPIFY_ADMIN_TOKEN` | Worker secret | Publish to Shopify |
+| `HYPERBEAM_API_KEY` | Worker secret + GitHub secret | Live browser panel |
+| `CF_ACCOUNT_ID` + `CF_API_TOKEN` | Worker secret | Cloudflare Images |
+| `PUBLISH_WEBHOOK_URL` | Worker secret | Generic publish (Zapier/Make) |
+
+Set via: `wrangler secret put <KEY> --name nexus-api`
+
+## Migrations
+
+Canonical location: `nexus/migrations/`. The API's `wrangler.toml` points here via `migrations_dir = "../../migrations"`.
+
+**Apply locally:**
+```bash
+pnpm db:migrate          # runs wrangler d1 migrations apply nexus-db --local
 ```
 
-### 2. One-Click Setup (Mac/Linux)
+**Apply to production:**
 ```bash
-cd nexus
-chmod +x setup/setup.sh
-./setup/setup.sh
+cd apps/nexus-api && wrangler d1 migrations apply nexus-db --remote
 ```
 
-### 3. Manual Setup
+**Rollback:** D1 has no built-in rollback. Write a reverse migration as a new numbered file. Never rename or delete an already-applied migration — D1 tracks them by filename in `d1_migrations`.
+
+**Naming:** Files are `NNN_description.sql`, strictly sequential. No duplicate numbers.
+
+## Deploy
+
+Auto-deploy is configured via `.github/workflows/deploy.yml`. Every push to `main`:
+
+1. `pnpm install --frozen-lockfile`
+2. `pnpm lint` (web app)
+3. `pnpm test` (vitest)
+4. `pnpm typecheck`
+5. `pnpm --filter web pages:build` (next-on-pages)
+6. `wrangler deploy` × 2 (nexus-ai, nexus-api)
+7. `wrangler pages deploy` (frontend)
+8. `wrangler d1 migrations apply nexus-db --remote`
+
+Required GitHub secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `HYPERBEAM_API_KEY`.
+
+**Manual deploy:**
 ```bash
-# Login to Cloudflare
-wrangler login
-
-# Create infrastructure
-wrangler d1 create nexus-db
-wrangler kv:namespace create nexus-config
-wrangler r2 bucket create nexus-assets
-
-# Run migrations
-wrangler d1 execute nexus-db --file=migrations/001_core_schema.sql
-wrangler d1 execute nexus-db --file=migrations/002_ai_registry.sql
-wrangler d1 execute nexus-db --file=migrations/003_prompt_templates.sql
-wrangler d1 execute nexus-db --file=migrations/004_platform_configs.sql
-wrangler d1 execute nexus-db --file=migrations/005_social_channels.sql
-
-# Add API keys
-wrangler secret put DEEPSEEK_API_KEY --name nexus-api
+cd apps/nexus-ai  && wrangler deploy
+cd apps/nexus-api && wrangler deploy
+cd apps/web       && pnpm pages:build && wrangler pages deploy .vercel/output/static --project-name nexus-web
 ```
 
 ## Development
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Run all apps
-pnpm dev
-
-# Or run individually
-pnpm --filter nexus-api dev    # API: http://localhost:8787
-pnpm --filter nexus-ai dev    # AI Worker: http://localhost:8788
-pnpm --filter web dev         # Frontend: http://localhost:3000
+pnpm dev              # starts all 3 apps via turbo
+# or individually:
+pnpm --filter nexus-api dev    # http://localhost:8787
+pnpm --filter nexus-ai dev     # http://localhost:8788
+pnpm --filter web dev          # http://localhost:3000
 ```
 
-## Deployment
+## Testing
 
 ```bash
-# Deploy API
-cd apps/nexus-api && wrangler deploy
-
-# Deploy AI Worker
-cd apps/nexus-ai && wrangler deploy
+pnpm test             # runs vitest across all packages
+pnpm typecheck        # TypeScript strict check (5 packages)
+pnpm lint             # ESLint (web app)
 ```
 
-## API Endpoints
+Tests live next to source: `src/**/*.test.ts`. Vitest config excludes `dist/` and `.wrangler/`.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/workflow/start` | Start new workflow |
-| GET | `/api/workflow/:id` | Get workflow status |
-| GET | `/api/products` | List products |
-| GET | `/api/products/:id` | Get product detail |
-| POST | `/api/review/:id/approve` | Approve product |
-| POST | `/api/review/:id/reject` | Reject product |
-| POST | `/api/publish` | Publish to platforms |
-| GET | `/api/domains` | List domains |
-| GET | `/api/platforms` | List platforms |
-| GET | `/api/trends` | Get trend radar |
-| GET | `/api/winners` | Get winner patterns |
-| GET | `/api/settings` | Get settings |
-| PATCH | `/api/settings` | Update settings |
+## Project Layout
 
-## AI Workflow Steps
-
-1. Market Research
-2. Buyer Psychology
-3. Keyword Research
-4. Content Generation
-5. Asset Creation
-6. SEO Optimization
-7. Title Variants
-8. Quality Edit
-9. Buyer Simulation
-10. Competitor Analysis
-11. Humanizer Pass
-12. Revenue Estimate
-13. Platform Variations
-14. Social Content
-15. CEO Review
-
-## Configuration
-
-Environment variables (`.env`):
-```env
-NEXT_PUBLIC_API_URL=https://nexus-api.your-subdomain.workers.dev
+```
+nexus/
+├── apps/
+│   ├── nexus-api/       # Main API worker (Hono, D1, KV, R2)
+│   ├── nexus-ai/        # AI failover router (25+ models)
+│   └── web/             # Next.js frontend (Pages)
+├── packages/
+│   ├── types/           # Shared TypeScript types
+│   └── prompts/         # Prompt templates
+├── migrations/          # D1 migrations (canonical)
+└── setup/               # One-click Cloudflare setup scripts
 ```
 
-## License
+## Domains
 
-Private - All rights reserved
+6 business verticals, each with categories:
+
+1. **Digital Products** — `/digital`
+2. **Print on Demand** — `/print-on-demand`
+3. **Content & Media** — `/content`
+4. **Freelance Services** — `/freelance-services`
+5. **Affiliate Marketing** — `/affiliate-marketing`
+6. **E-Commerce & Retail** — `/ecommerce-retail` (includes Dropshipping)
+
+## Architecture Notes
+
+- **Auth model:** Single owner password, hashed with SHA-256 + salt, stored in KV. Session tokens (24h TTL) in KV. Rate-limited login (5 attempts/60s per IP).
+- **AI failover:** `nexus-ai` tries providers in priority order (DeepSeek → Groq → Workers AI). Each call has a hard deadline with retry logic.
+- **Publishing:** Each platform adapter is gated behind its credential. Missing credential = `{ status: "failed", error: "... not configured" }`. Never fakes success.
+- **Safety:** CEO chat has dual-layer risk detection — frontend regex patterns show dismissable warnings, backend system prompt enforces warnings for risky requests.
+- **Autopilot:** Cron-driven product builder that runs overnight. Quality gates block bad products.
+- **Learning loop:** Syncs Gumroad sales, extracts winning patterns, feeds them back into product generation.
