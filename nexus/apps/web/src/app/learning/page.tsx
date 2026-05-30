@@ -6,6 +6,7 @@ import {
   Loader2, Zap, DollarSign, Hash, Tag, Target,
 } from 'lucide-react'
 import { api, type LearningStats, type LearningPatternRow } from '@/lib/api'
+import { toast } from '@/lib/toast'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
 const PATTERN_ICONS: Record<string, React.ReactNode> = {
@@ -36,7 +37,7 @@ export default function LearningPage() {
         setStats(s)
         setPatterns(p.patterns)
       })
-      .catch(() => {})
+      .catch(() => toast.error('Failed to load learning data'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -47,7 +48,7 @@ export default function LearningPage() {
     try {
       await api.syncLearning()
       load()
-    } catch {}
+    } catch { toast.error('Sync failed') }
     setSyncing(false)
   }
 
@@ -56,7 +57,7 @@ export default function LearningPage() {
     try {
       await api.analyzeLearning()
       load()
-    } catch {}
+    } catch { toast.error('Analysis failed') }
     setAnalyzing(false)
   }
 

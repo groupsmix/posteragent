@@ -6,6 +6,7 @@ import {
   Eye, MousePointerClick, CheckCircle2, Clock,
 } from 'lucide-react'
 import { api, type ABTest, type ABTestDetail } from '@/lib/api'
+import { toast } from '@/lib/toast'
 import type { Product } from '@nexus/types'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
@@ -200,7 +201,7 @@ export default function ABTestingPage() {
       setShowCreate(false)
       setSelectedProductId('')
       load()
-    } catch {}
+    } catch { toast.error('Failed to create A/B test') }
     setCreating(false)
   }
 
@@ -209,14 +210,14 @@ export default function ABTestingPage() {
     try {
       const res = await api.getProducts({ status: 'approved', limit: 100 })
       setProducts(res.products)
-    } catch {}
+    } catch { toast.error('Failed to load products') }
   }
 
   const handleSelect = async (id: string) => {
     try {
       const detail = await api.getABTest(id)
       setSelectedDetail(detail)
-    } catch {}
+    } catch { toast.error('Failed to load test details') }
   }
 
   const handleComplete = async (id: string) => {
@@ -227,7 +228,7 @@ export default function ABTestingPage() {
         const detail = await api.getABTest(id)
         setSelectedDetail(detail)
       }
-    } catch {}
+    } catch { toast.error('Failed to complete test') }
   }
 
   const runningTests = tests.filter((t) => t.status === 'running')

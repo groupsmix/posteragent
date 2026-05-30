@@ -1,6 +1,7 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { AppShell } from '@/components/shell/AppShell'
+import ToastContainer from '@/components/shell/ToastContainer'
 
 export const metadata: Metadata = {
   title: 'NEXUS — AI Product Engine',
@@ -16,6 +17,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className="dark">
       <body className="min-h-screen bg-background font-sans antialiased">
         <AppShell>{children}</AppShell>
+        <ToastContainer />
       </body>
     </html>
   )

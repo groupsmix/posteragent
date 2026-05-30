@@ -775,7 +775,7 @@ export const api = {
 
   // CEO Agent (full-control, tool-using)
   managerAgent: (message: string, history: ManagerMessage[]) =>
-    apiFetch<AgentReply>('/api/manager/agent', {
+    apiFetch<AgentReply>('/api/agent/agent', {
       method: 'POST',
       body: JSON.stringify({ message, history }),
     }),
@@ -906,7 +906,7 @@ export const api = {
 
   // Scoring + quality gates
   getProductScore: (id: string) =>
-    apiFetch<ProductScoreResponse>(`/api/products/${id}/score`),
+    apiFetch<ProductScoreResponse>(`/api/scoring/${id}/score`),
   scoreNiche: (niche: string) =>
     apiFetch<NicheScoreResponse>('/api/niches/score', {
       method: 'POST',
@@ -931,31 +931,31 @@ export const api = {
 
   // Browser actions & multi-platform listing
   executeBrowserActions: (actions: BrowserAction[]) =>
-    apiFetch<ExecutionResult>('/api/browser/actions', {
+    apiFetch<ExecutionResult>('/api/browser-actions/actions', {
       method: 'POST',
       body: JSON.stringify({ actions }),
     }),
-  getBrowserFlows: () => apiFetch<{ flows: FlowInfo[] }>('/api/browser/flows'),
+  getBrowserFlows: () => apiFetch<{ flows: FlowInfo[] }>('/api/browser-actions/flows'),
   executeBrowserFlow: (name: string, variables?: Record<string, string>) =>
-    apiFetch<ExecutionResult & { flow: string; platform: string }>(`/api/browser/flows/${name}/execute`, {
+    apiFetch<ExecutionResult & { flow: string; platform: string }>(`/api/browser-actions/flows/${name}/execute`, {
       method: 'POST',
       body: JSON.stringify({ variables }),
     }),
   getPlatformStatuses: () =>
-    apiFetch<{ platforms: PlatformStatusInfo[] }>('/api/browser/platforms/status'),
+    apiFetch<{ platforms: PlatformStatusInfo[] }>('/api/browser-actions/platforms/status'),
   listOnPlatform: (platformName: string, product: Record<string, string>) =>
-    apiFetch<ListingResult>(`/api/browser/platforms/${platformName}/list`, {
+    apiFetch<ListingResult>(`/api/browser-actions/platforms/${platformName}/list`, {
       method: 'POST',
       body: JSON.stringify({ product }),
     }),
   listOnAllPlatforms: (product: Record<string, string>, platforms?: string[]) =>
-    apiFetch<{ results: ListingResult[] }>('/api/browser/platforms/list-all', {
+    apiFetch<{ results: ListingResult[] }>('/api/browser-actions/platforms/list-all', {
       method: 'POST',
       body: JSON.stringify({ product, platforms }),
     }),
   getPlatformListings: (productId?: string) => {
     const qs = productId ? `?product_id=${productId}` : ''
-    return apiFetch<{ listings: PlatformListing[] }>(`/api/browser/platforms/listings${qs}`)
+    return apiFetch<{ listings: PlatformListing[] }>(`/api/browser-actions/platforms/listings${qs}`)
   },
 
   // A/B Testing

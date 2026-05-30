@@ -8,6 +8,7 @@ import {
   Briefcase, Package, Shirt, FileText, X,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from '@/lib/toast'
 import type { OpportunityInfo, OpportunitySummary } from '@/lib/api'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
@@ -239,7 +240,7 @@ export default function OpportunitiesPage() {
         setOpportunities(oppData.opportunities)
         setSummary(sumData)
       })
-      .catch(() => {})
+      .catch(() => toast.error('Failed to load opportunities'))
       .finally(() => setLoading(false))
   }, [filterStatus, filterFormat])
 
@@ -250,7 +251,7 @@ export default function OpportunitiesPage() {
     try {
       const result = await api.scanOpportunities(nicheInput || undefined)
       if (result.scanned > 0) load()
-    } catch {}
+    } catch { toast.error('Scan failed') }
     setScanning(false)
   }
 
@@ -260,14 +261,14 @@ export default function OpportunitiesPage() {
       setOpportunities((prev) =>
         prev.map((o) => (o.id === id ? { ...o, status } : o))
       )
-    } catch {}
+    } catch { toast.error('Failed to update status') }
   }
 
   const handleDelete = async (id: string) => {
     try {
       await api.deleteOpportunity(id)
       setOpportunities((prev) => prev.filter((o) => o.id !== id))
-    } catch {}
+    } catch { toast.error('Failed to delete opportunity') }
   }
 
   const topOpps = summary?.top_opportunities ?? []

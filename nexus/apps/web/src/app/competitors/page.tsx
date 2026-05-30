@@ -6,6 +6,7 @@ import {
   DollarSign, Lightbulb, RefreshCw, ExternalLink,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from '@/lib/toast'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 
 interface Competitor {
@@ -39,7 +40,7 @@ export default function CompetitorsPage() {
     setLoading(true)
     api.getCompetitors()
       .then((data) => setCompetitors(data.competitors))
-      .catch(() => {})
+      .catch(() => toast.error('Failed to load competitors'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -50,7 +51,7 @@ export default function CompetitorsPage() {
     try {
       const data = await api.getCompetitorInsights()
       setInsights(data)
-    } catch {}
+    } catch { toast.error('Failed to load insights') }
     setInsightsLoading(false)
   }
 
@@ -63,7 +64,7 @@ export default function CompetitorsPage() {
       setFormData({ name: '', url: '', platform: 'etsy', niche: '' })
       setShowForm(false)
       load()
-    } catch {}
+    } catch { toast.error('Failed to add competitor') }
     setSubmitting(false)
   }
 
@@ -71,7 +72,7 @@ export default function CompetitorsPage() {
     try {
       await api.deleteCompetitor(id)
       setCompetitors((prev) => prev.filter((c) => c.id !== id))
-    } catch {}
+    } catch { toast.error('Failed to delete competitor') }
   }
 
   const handleScan = async (id: string) => {
@@ -79,7 +80,7 @@ export default function CompetitorsPage() {
     try {
       await api.scanCompetitor(id)
       load()
-    } catch {}
+    } catch { toast.error('Scan failed') }
     setScanning(null)
   }
 
