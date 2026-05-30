@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   Bot, Send, Loader2, CheckCircle2, XCircle, ExternalLink, Wrench,
   ChevronDown, ChevronRight, Clock, Zap, Search, ShoppingCart, Megaphone,
-  Globe, Image as ImageIcon,
+  Globe, Image as ImageIcon, AlertTriangle,
 } from 'lucide-react'
 import { api, API_BASE, type ManagerMessage, type AgentStep, type ProductScoreResponse, type ActionResult, type ActionStep as ActionStepType } from '@/lib/api'
 import { ScoreBadge } from '@/components/shared/ScoreBadge'
@@ -26,6 +26,24 @@ const SUGGESTIONS = [
   'Run marketing for my top product',
   'Create a POD design for motivational quotes',
 ]
+
+const RISK_PATTERNS: { pattern: RegExp; warning: string }[] = [
+  { pattern: /scrap(e|ing)\s+(google|linkedin|facebook|instagram|twitter|amazon|yelp)/i, warning: 'Scraping this site violates their Terms of Service. Your IP/account could be banned.' },
+  { pattern: /google\s*maps?\s*(scrap|extract|harvest|collect|get\s+(emails?|phones?|contacts?))/i, warning: 'Scraping Google Maps violates ToS. Google actively bans scrapers and has sued companies for this.' },
+  { pattern: /(mass|bulk|blast)\s*(email|dm|message)/i, warning: 'Mass emailing without consent violates CAN-SPAM/GDPR. Your domain could be permanently blacklisted.' },
+  { pattern: /(fake|buy)\s*(reviews?|followers?|likes?|accounts?)/i, warning: 'Fake reviews/followers violate platform rules and can result in permanent bans and legal action.' },
+  { pattern: /(copy|steal|rip)\s*(design|content|image|logo|brand)/i, warning: 'Using others\' content without permission is copyright infringement — legal liability and takedowns.' },
+  { pattern: /spam\s*(comment|dm|inbox|email)/i, warning: 'Automated spam results in account suspension on every platform.' },
+  { pattern: /(harvest|collect|scrape)\s*(emails?|phone|data|contacts?)\s*(from|without)/i, warning: 'Collecting personal data without consent violates GDPR — fines up to 4% of revenue.' },
+  { pattern: /counterfeit|knock.?off|replica\s*(brand|nike|gucci|louis)/i, warning: 'Selling counterfeit goods is illegal — platform bans, lawsuits, and criminal charges.' },
+]
+
+function detectRisk(text: string): string | null {
+  for (const { pattern, warning } of RISK_PATTERNS) {
+    if (pattern.test(text)) return warning
+  }
+  return null
+}
 
 const TOOL_LABELS: Record<string, string> = {
   list_products: 'Looked up products',
@@ -148,6 +166,7 @@ export default function CeoManagerPage() {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [browserOpen, setBrowserOpen] = useState(false)
+  const [riskWarning, setRiskWarning] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -293,6 +312,23 @@ export default function CeoManagerPage() {
           </div>
         )}
 
+        {/* Risk warning banner */}
+        {riskWarning && (
+          <div className="mx-6 mb-0 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+            <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex-1 text-xs text-amber-200">
+              <span className="font-semibold text-amber-400">Risk Warning: </span>
+              {riskWarning}
+            </div>
+            <button
+              onClick={() => setRiskWarning(null)}
+              className="text-amber-500/60 hover:text-amber-400 text-xs shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Input bar */}
         <div className="border-t border-border px-6 py-3">
           <form
@@ -312,7 +348,11 @@ export default function CeoManagerPage() {
             </button>
             <input
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value)
+                const risk = detectRisk(e.target.value)
+                setRiskWarning(risk)
+              }}
               placeholder="Ask anything…"
               className="flex-1 rounded-lg border border-border bg-background px-3.5 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
               disabled={busy}
