@@ -848,4 +848,44 @@ export const api = {
     const qs = productId ? `?product_id=${productId}` : ''
     return apiFetch<{ listings: PlatformListing[] }>(`/api/browser/platforms/listings${qs}`)
   },
+
+  // Observability
+  getObservability: () =>
+    apiFetch<{
+      summary: {
+        recent_workflows: number
+        failed_workflows: number
+        success_workflows: number
+        failed_ai_steps: number
+        product_counts: Record<string, number>
+        ai_spend_today: number
+        ai_spend_cap: number
+        ai_cap_reached: boolean
+      }
+      failed_steps: Array<{
+        run_id: string
+        step_name: string
+        status: string
+        model_used: string | null
+        error: string | null
+        started_at: string | null
+        completed_at: string | null
+      }>
+      recent_workflows: Array<{
+        id: string
+        status: string
+        domain_slug: string | null
+        category_slug: string | null
+        created_at: string
+        updated_at: string | null
+      }>
+      publish_results: Array<{
+        id: string
+        title: string
+        status: string
+        domain_slug: string | null
+        gumroad_url: string | null
+        created_at: string
+      }>
+    }>('/api/observability'),
 }
