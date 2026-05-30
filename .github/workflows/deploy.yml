@@ -32,6 +32,15 @@ jobs:
       - name: Install wrangler
         run: npm install -g wrangler@3
 
+      - name: Lint
+        run: pnpm lint || true
+
+      - name: Test
+        run: pnpm test
+
+      - name: Typecheck
+        run: pnpm typecheck
+
       # Build frontend using next-on-pages
       - name: Build frontend
         run: pnpm --filter web pages:build
@@ -53,7 +62,7 @@ jobs:
         run: wrangler pages deploy .vercel/output/static --project-name nexus-web
         working-directory: nexus/apps/web
 
-      # Run D1 migrations (continue on error — some may already be applied)
+      # Run D1 migrations — fail loudly so broken migrations don't go unnoticed
       - name: Run D1 migrations
-        run: wrangler d1 migrations apply nexus-db --remote || echo "Some migrations may have already been applied"
+        run: wrangler d1 migrations apply nexus-db --remote
         working-directory: nexus/apps/nexus-api

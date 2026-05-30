@@ -86,6 +86,11 @@ export default function SettingsPage() {
                 onChange={(v) => update({ auto_publish_after_approval: v })}
               />
               <ToggleRow
+                label="Auto-publish to Gumroad on approve"
+                checked={!!settings.auto_publish_gumroad}
+                onChange={(v) => update({ auto_publish_gumroad: v })}
+              />
+              <ToggleRow
                 label="Trend radar enabled"
                 checked={!!settings.trend_radar_enabled}
                 onChange={(v) => update({ trend_radar_enabled: v })}

@@ -149,6 +149,23 @@ export interface PlatformListing {
   created_at: string
 }
 
+export interface CompetitorEntry {
+  id: string
+  name: string
+  platform: string
+  url: string
+  niche: string | null
+  last_checked_at: string | null
+  created_at: string
+}
+
+export interface CompetitorInsightsResponse {
+  insights: string
+  trending_products: { title: string; reason: string }[]
+  price_gaps: { niche: string; observation: string }[]
+  opportunities: { title: string; description: string }[]
+}
+
 export interface AgentReply {
   reply: string
   steps: AgentStep[]
@@ -250,6 +267,35 @@ export interface AutopilotStatus {
   est_revenue: { low: number; high: number; currency: string }
   winners: AutopilotWinner[]
   recent: AutopilotLogEntry[]
+}
+
+// Email list builder types
+export interface Subscriber {
+  id: string
+  email: string
+  name: string | null
+  source: string | null
+  subscribed_at: string
+  unsubscribed_at: string | null
+}
+
+export interface SubscribersResponse {
+  subscribers: Subscriber[]
+  total: number
+  active: number
+}
+
+export interface EmailCampaign {
+  id: string
+  subject: string
+  body: string
+  product_id: string | null
+  status: string
+  sent_at: string | null
+  open_count: number
+  click_count: number
+  created_at: string
+  product_name?: string | null
 }
 
 export interface MarketingLogEntry {
@@ -546,6 +592,21 @@ export interface ABTestCompleteResult {
   variant_b_rate: number
 }
 
+// Blog Engine types
+export interface BlogPost {
+  id: string
+  title: string
+  slug: string
+  content: string
+  meta_description: string | null
+  keywords: string | null
+  product_id: string | null
+  status: 'draft' | 'published'
+  published_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 const TOKEN_KEY = 'nexus_token'
 
 export function getToken(): string | null {
@@ -828,6 +889,20 @@ export const api = {
   },
   getGumroadAnalytics: (productId: string) =>
     apiFetch<{ analytics: GumroadAnalyticsInfo }>(`/api/gumroad/products/${productId}/analytics`),
+  publishProductToGumroad: (productId: string) =>
+    apiFetch<{ ok: boolean; gumroad_product_id: string; gumroad_url: string }>(
+      `/api/products/${productId}/publish-gumroad`,
+      { method: 'POST' },
+    ),
+
+  // User preferences (sidebar order, theme, layout)
+  getUserPreference: (key: string) =>
+    apiFetch<{ key: string; value: string }>(`/api/settings/preference/${key}`).catch(() => null),
+  setUserPreference: (key: string, value: string) =>
+    apiFetch<{ ok: boolean }>('/api/settings/preference', {
+      method: 'POST',
+      body: JSON.stringify({ key, value }),
+    }),
 
   // Scoring + quality gates
   getProductScore: (id: string) =>
@@ -901,4 +976,333 @@ export const api = {
     }),
   completeABTest: (id: string) =>
     apiFetch<ABTestCompleteResult>(`/api/ab-tests/${id}/complete`, { method: 'POST' }),
+
+  // Blog Engine
+  getBlogPosts: (opts?: { status?: string; limit?: number; offset?: number }) => {
+    const qs = new URLSearchParams()
+    if (opts?.status) qs.set('status', opts.status)
+    if (opts?.limit) qs.set('limit', String(opts.limit))
+    if (opts?.offset) qs.set('offset', String(opts.offset))
+    const q = qs.toString()
+    return apiFetch<{ posts: BlogPost[]; total: number; limit: number; offset: number }>(
+      `/api/blog${q ? `?${q}` : ''}`,
+    )
+  },
+  getBlogPost: (slug: string) => apiFetch<{ post: BlogPost }>(`/api/blog/${slug}`),
+  generateBlogPost: (data: { niche?: string; product_id?: string; keywords?: string; tone?: string }) =>
+    apiFetch<{ post: BlogPost }>('/api/blog/generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateBlogPost: (id: string, data: Partial<BlogPost>) =>
+    apiFetch<{ post: BlogPost }>(`/api/blog/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteBlogPost: (id: string) => apiFetch<{ ok: boolean }>(`/api/blog/${id}`, { method: 'DELETE' }),
+  publishBlogPost: (id: string) =>
+    apiFetch<{ post: BlogPost }>(`/api/blog/${id}/publish`, { method: 'POST' }),
+
+  // Email list builder
+  subscribe: (data: { email: string; name?: string; source?: string }) =>
+    apiFetch<{ ok: boolean; id: string }>('/api/email/subscribe', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getSubscribers: () => apiFetch<SubscribersResponse>('/api/email/subscribers'),
+  unsubscribe: (id: string) => apiFetch<{ ok: boolean }>(`/api/email/subscribers/${id}`, { method: 'DELETE' }),
+  createCampaign: (data: { product_id?: string; subject?: string; body?: string }) =>
+    apiFetch<{ ok: boolean; campaign: EmailCampaign }>('/api/email/campaigns', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getCampaigns: () => apiFetch<{ campaigns: EmailCampaign[] }>('/api/email/campaigns'),
+  sendCampaign: (id: string) =>
+    apiFetch<{ ok: boolean; sent_to: number; campaign_id: string; sent_at: string }>(
+      `/api/email/campaigns/${id}/send`,
+      { method: 'POST' },
+    ),
+
+  // Competitor Tracker
+  getCompetitors: () =>
+    apiFetch<{ competitors: CompetitorEntry[] }>('/api/competitors'),
+  addCompetitor: (data: { name: string; url: string; platform: string; niche?: string }) =>
+    apiFetch<CompetitorEntry>('/api/competitors', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteCompetitor: (id: string) =>
+    apiFetch<{ ok: boolean }>(`/api/competitors/${id}`, { method: 'DELETE' }),
+  scanCompetitor: (id: string) =>
+    apiFetch<{ ok: boolean; products_found: number; summary: string }>(`/api/competitors/${id}/scan`, { method: 'POST' }),
+  getCompetitorInsights: () =>
+    apiFetch<CompetitorInsightsResponse>('/api/competitors/insights'),
+
+  // Observability
+  getObservability: () =>
+    apiFetch<{
+      summary: {
+        recent_workflows: number
+        failed_workflows: number
+        success_workflows: number
+        failed_ai_steps: number
+        product_counts: Record<string, number>
+        ai_spend_today: number
+        ai_spend_cap: number
+        ai_cap_reached: boolean
+      }
+      failed_steps: Array<{
+        run_id: string
+        step_name: string
+        status: string
+        model_used: string | null
+        error: string | null
+        started_at: string | null
+        completed_at: string | null
+      }>
+      recent_workflows: Array<{
+        id: string
+        status: string
+        domain_slug: string | null
+        category_slug: string | null
+        created_at: string
+        updated_at: string | null
+      }>
+      publish_results: Array<{
+        id: string
+        title: string
+        status: string
+        domain_slug: string | null
+        gumroad_url: string | null
+        created_at: string
+      }>
+    }>('/api/observability'),
+
+  // ── Freelance Engine ───────────────────────────────────────
+  getFreelanceJobs: (status?: string) => {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : ''
+    return apiFetch<{ jobs: FreelanceJobSummary[] }>(`/api/freelance/jobs${qs}`)
+  },
+  getFreelanceJob: (id: string) =>
+    apiFetch<FreelanceJobDetail>(`/api/freelance/jobs/${id}`),
+  createFreelanceJob: (data: CreateFreelanceJobInput) =>
+    apiFetch<{ id: string; status: string }>('/api/freelance/jobs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  startFreelanceJob: (id: string) =>
+    apiFetch<{ ok: boolean }>(`/api/freelance/jobs/${id}/start`, { method: 'POST' }),
+  approvePlan: (id: string) =>
+    apiFetch<{ ok: boolean }>(`/api/freelance/jobs/${id}/approve-plan`, { method: 'POST' }),
+  provideInfo: (id: string, info: string) =>
+    apiFetch<{ ok: boolean }>(`/api/freelance/jobs/${id}/provide-info`, {
+      method: 'POST', body: JSON.stringify({ info }),
+    }),
+  pauseJob: (id: string) =>
+    apiFetch<{ ok: boolean }>(`/api/freelance/jobs/${id}/pause`, { method: 'POST' }),
+  resumeJob: (id: string) =>
+    apiFetch<{ ok: boolean }>(`/api/freelance/jobs/${id}/resume`, { method: 'POST' }),
+  cancelJob: (id: string) =>
+    apiFetch<{ ok: boolean }>(`/api/freelance/jobs/${id}/cancel`, { method: 'POST' }),
+  approveJob: (id: string) =>
+    apiFetch<{ ok: boolean }>(`/api/freelance/jobs/${id}/approve`, { method: 'POST' }),
+  forceApproveTask: (jobId: string, taskId: string) =>
+    apiFetch<{ ok: boolean }>(`/api/freelance/jobs/${jobId}/tasks/${taskId}/force-approve`, { method: 'POST' }),
+  requestTaskRevision: (jobId: string, taskId: string, instructions: string) =>
+    apiFetch<{ ok: boolean }>(`/api/freelance/jobs/${jobId}/tasks/${taskId}/request-revision`, {
+      method: 'POST', body: JSON.stringify({ instructions }),
+    }),
+  addJobNote: (id: string, note: string) =>
+    apiFetch<{ ok: boolean }>(`/api/freelance/jobs/${id}/add-note`, {
+      method: 'POST', body: JSON.stringify({ note }),
+    }),
+  updateJob: (id: string, data: Partial<{ deadline: string; priority: number; budget: number; max_ai_calls: number }>) =>
+    apiFetch<{ ok: boolean }>(`/api/freelance/jobs/${id}`, {
+      method: 'PATCH', body: JSON.stringify(data),
+    }),
+  clientRevision: (id: string, feedback: string) =>
+    apiFetch<{ ok: boolean }>(`/api/freelance/jobs/${id}/client-revision`, {
+      method: 'POST', body: JSON.stringify({ feedback }),
+    }),
+  getTaskArtifacts: (jobId: string, taskId: string) =>
+    apiFetch<{ artifacts: TaskArtifactInfo[] }>(`/api/freelance/jobs/${jobId}/tasks/${taskId}/artifacts`),
+  getPlaybook: (jobType: string) =>
+    apiFetch<{ job_type: string; stages: PlaybookStageInfo[] }>(`/api/freelance/playbooks/${jobType}`),
+  saveTemplate: (id: string, name: string) =>
+    apiFetch<{ ok: boolean; template_id: string }>(`/api/freelance/jobs/${id}/save-template`, {
+      method: 'POST', body: JSON.stringify({ name }),
+    }),
+  getTemplates: (jobType?: string) =>
+    apiFetch<{ templates: TemplateInfo[] }>(`/api/freelance/templates${jobType ? `?job_type=${jobType}` : ''}`),
+  getPortfolio: () =>
+    apiFetch<{ entries: PortfolioEntryInfo[] }>('/api/freelance/portfolio'),
+  generatePortfolio: (id: string) =>
+    apiFetch<{ ok: boolean; entry: PortfolioEntryInfo }>(`/api/freelance/jobs/${id}/portfolio`, {
+      method: 'POST',
+    }),
+  getCommandCenter: () =>
+    apiFetch<CommandCenterData>('/api/freelance/command-center'),
+  getIntakeQuestions: (jobType: string) =>
+    apiFetch<{ questions: IntakeQuestionInfo[] }>(`/api/freelance/intake-questions/${jobType}`),
+}
+
+// ── Freelance types ──────────────────────────────────────────
+
+export interface FreelanceJobSummary {
+  id: string
+  client_name: string
+  title: string
+  job_type: string
+  status: string
+  deadline: string | null
+  budget: number | null
+  priority: number
+  current_stage: string | null
+  ai_calls_used: number
+  max_ai_calls: number
+  at_risk: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface FreelanceJobDetail {
+  job: FreelanceJobSummary & {
+    brief: string
+    plan_json: string | null
+    final_output: string | null
+    client_message: string | null
+    upsell_suggestion: string | null
+    links_notes: string | null
+    deliverables_required: string | null
+    attachments_json: string | null
+    quality_score_json: string | null
+    owner_notes: string | null
+    client_feedback: string | null
+    missing_info_json: string | null
+    max_revision_rounds: number
+    max_runtime_minutes: number
+    started_at: string | null
+    completed_at: string | null
+  }
+  tasks: FreelanceTaskInfo[]
+  events: FreelanceEventInfo[]
+  artifacts: TaskArtifactInfo[]
+}
+
+export interface FreelanceTaskInfo {
+  id: string
+  job_id: string
+  agent_role: string
+  title: string
+  instructions: string
+  acceptance_criteria_json: string | null
+  status: string
+  output_json: string | null
+  ceo_review_json: string | null
+  revision_count: number
+  max_revisions: number
+  playbook_stage: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface FreelanceEventInfo {
+  id: string
+  job_id: string
+  task_id: string | null
+  actor: string
+  event_type: string
+  message: string
+  metadata_json: string | null
+  created_at: string
+}
+
+export interface TaskArtifactInfo {
+  id: string
+  task_id: string
+  job_id: string
+  version: number
+  output_json: string
+  ceo_review_json: string | null
+  revision_instructions: string | null
+  created_at: string
+}
+
+export interface PlaybookStageInfo {
+  name: string
+  agent_role: string
+  title: string
+  default_criteria: string[]
+  instructions_template: string
+}
+
+export interface CreateFreelanceJobInput {
+  client_name: string
+  title: string
+  job_type: string
+  brief: string
+  deadline?: string
+  budget?: number
+  deliverables_required?: string
+  links_notes?: string
+  attachments_json?: string
+  priority?: number
+  max_ai_calls?: number
+  max_revision_rounds?: number
+  max_runtime_minutes?: number
+  intake_answers_json?: string
+}
+
+export interface TemplateInfo {
+  id: string
+  name: string
+  job_type: string
+  description: string
+  source_job_id: string | null
+  usage_count: number
+  created_at: string
+}
+
+export interface PortfolioEntryInfo {
+  id: string
+  job_id: string
+  client_name: string
+  job_type: string
+  title: string
+  challenge: string
+  approach: string
+  result: string
+  testimonial_request: string
+  created_at: string
+}
+
+export interface IntakeQuestionInfo {
+  field: string
+  question: string
+  required: boolean
+  placeholder: string
+}
+
+export interface CommandCenterData {
+  due_soon: FreelanceJobSummary[]
+  blocked: FreelanceJobSummary[]
+  ready_for_approval: FreelanceJobSummary[]
+  running: FreelanceJobSummary[]
+  profit_by_type: Array<{
+    job_type: string
+    total_jobs: number
+    delivered: number
+    total_revenue: number
+    total_ai_cost: number
+    avg_profit_score: number
+    avg_ai_calls: number
+  }>
+  totals: {
+    total_jobs: number
+    delivered: number
+    active: number
+    total_revenue: number
+    total_cost: number
+  }
 }
