@@ -512,6 +512,21 @@ export interface PODStats {
   revenue_estimate_usd: number
 }
 
+// Blog Engine types
+export interface BlogPost {
+  id: string
+  title: string
+  slug: string
+  content: string
+  meta_description: string | null
+  keywords: string | null
+  product_id: string | null
+  status: 'draft' | 'published'
+  published_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 const TOKEN_KEY = 'nexus_token'
 
 export function getToken(): string | null {
@@ -848,4 +863,30 @@ export const api = {
     const qs = productId ? `?product_id=${productId}` : ''
     return apiFetch<{ listings: PlatformListing[] }>(`/api/browser/platforms/listings${qs}`)
   },
+
+  // Blog Engine
+  getBlogPosts: (opts?: { status?: string; limit?: number; offset?: number }) => {
+    const qs = new URLSearchParams()
+    if (opts?.status) qs.set('status', opts.status)
+    if (opts?.limit) qs.set('limit', String(opts.limit))
+    if (opts?.offset) qs.set('offset', String(opts.offset))
+    const q = qs.toString()
+    return apiFetch<{ posts: BlogPost[]; total: number; limit: number; offset: number }>(
+      `/api/blog${q ? `?${q}` : ''}`,
+    )
+  },
+  getBlogPost: (slug: string) => apiFetch<{ post: BlogPost }>(`/api/blog/${slug}`),
+  generateBlogPost: (data: { niche?: string; product_id?: string; keywords?: string; tone?: string }) =>
+    apiFetch<{ post: BlogPost }>('/api/blog/generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateBlogPost: (id: string, data: Partial<BlogPost>) =>
+    apiFetch<{ post: BlogPost }>(`/api/blog/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteBlogPost: (id: string) => apiFetch<{ ok: boolean }>(`/api/blog/${id}`, { method: 'DELETE' }),
+  publishBlogPost: (id: string) =>
+    apiFetch<{ post: BlogPost }>(`/api/blog/${id}/publish`, { method: 'POST' }),
 }
