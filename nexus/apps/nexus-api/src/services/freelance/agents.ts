@@ -4,6 +4,46 @@ import { SAFETY_KEYWORDS } from './types'
 import { POD_AGENT_PROMPTS } from './pod-types'
 import { safeJson } from '../shared/json-parse'
 
+const AI_TIMEOUT_MS = 60_000
+const AI_MAX_RETRIES = 2
+
+async function aiCall(
+  env: Env,
+  body: Record<string, unknown>,
+): Promise<{ output?: string }> {
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt <= AI_MAX_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS)
+
+      const res = await env.AI_WORKER.fetch(
+        new Request('https://nexus-ai/task', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ ...body, timeoutMs: AI_TIMEOUT_MS }),
+          signal: controller.signal,
+        }),
+      )
+      clearTimeout(timer)
+
+      if (!res.ok) {
+        throw new Error(`AI worker returned ${res.status}`)
+      }
+
+      return (await res.json()) as { output?: string }
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+      if (attempt < AI_MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)))
+      }
+    }
+  }
+
+  throw lastError ?? new Error('AI call failed after retries')
+}
+
 const AGENT_SYSTEM_PROMPTS: Record<AgentRole, string> = {
   ceo: `You are the CEO Agent — a strict project manager for freelance jobs.
 You review work against acceptance criteria. You reject generic, unsupported, or incomplete output.
@@ -90,24 +130,12 @@ export async function runAgent(
   const systemPrompt = AGENT_SYSTEM_PROMPTS[role]
   const fullPrompt = `${systemPrompt}\n\n${AGENT_OUTPUT_FORMAT}\n\nTASK:\n${prompt}`
 
-  const res = await env.AI_WORKER.fetch(
-    new Request('https://nexus-ai/task', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        taskType: 'content_generation',
-        prompt: fullPrompt,
-        outputFormat: 'json',
-        timeoutMs: 120000,
-      }),
-    }),
-  )
+  const data = await aiCall(env, {
+    taskType: 'content_generation',
+    prompt: fullPrompt,
+    outputFormat: 'json',
+  })
 
-  if (!res.ok) {
-    throw new Error(`AI worker returned ${res.status}`)
-  }
-
-  const data = (await res.json()) as { output?: string }
   const parsed = safeJson(data.output ?? '')
 
   if (!parsed || typeof parsed !== 'object') {
@@ -148,24 +176,12 @@ Sources: ${output.sources.join(', ') || 'none'}
 Assumptions: ${output.assumptions.join(', ') || 'none'}
 Risks: ${output.risks.join(', ') || 'none'}`
 
-  const res = await env.AI_WORKER.fetch(
-    new Request('https://nexus-ai/task', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        taskType: 'content_generation',
-        prompt,
-        outputFormat: 'json',
-        timeoutMs: 90000,
-      }),
-    }),
-  )
+  const data = await aiCall(env, {
+    taskType: 'content_generation',
+    prompt,
+    outputFormat: 'json',
+  })
 
-  if (!res.ok) {
-    throw new Error(`CEO review AI call failed: ${res.status}`)
-  }
-
-  const data = (await res.json()) as { output?: string }
   const parsed = safeJson(data.output ?? '')
 
   if (!parsed || typeof parsed !== 'object') {
@@ -210,24 +226,17 @@ Required deliverables: ${job.deliverables_required ?? 'not specified'}
 FINAL OUTPUT:
 ${finalOutput}`
 
-  const res = await env.AI_WORKER.fetch(
-    new Request('https://nexus-ai/task', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        taskType: 'content_generation',
-        prompt,
-        outputFormat: 'json',
-        timeoutMs: 90000,
-      }),
-    }),
-  )
-
-  if (!res.ok) {
+  let data: { output?: string }
+  try {
+    data = await aiCall(env, {
+      taskType: 'content_generation',
+      prompt,
+      outputFormat: 'json',
+    })
+  } catch {
     return { brief_match: 0, completeness: 0, originality: 0, client_readiness: 0, risk_level: 50, overall: 0, notes: 'QA scoring failed' }
   }
 
-  const data = (await res.json()) as { output?: string }
   const parsed = safeJson(data.output ?? '')
 
   if (!parsed || typeof parsed !== 'object') {

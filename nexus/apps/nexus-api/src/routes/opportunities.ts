@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
+import { rateLimit } from '../middleware/rate-limit'
 
 export const opportunityRoutes = new Hono<{ Bindings: Env }>()
 
@@ -192,7 +193,7 @@ opportunityRoutes.delete('/:id', async (c) => {
 
 // ── AI: Scan for opportunities ───────────────────────────────
 
-opportunityRoutes.post('/scan', async (c) => {
+opportunityRoutes.post('/scan', rateLimit(5), async (c) => {
   const { niche } = await c.req.json<{ niche?: string }>()
 
   const prompt = buildScanPrompt(niche)
@@ -247,7 +248,7 @@ opportunityRoutes.post('/scan', async (c) => {
 
 // ── Niche Factory: generate full niche plan ──────────────────
 
-opportunityRoutes.post('/niche-factory', async (c) => {
+opportunityRoutes.post('/niche-factory', rateLimit(5), async (c) => {
   const { niche } = await c.req.json<{ niche: string }>()
   if (!niche) return c.json({ error: 'niche is required' }, 400)
 

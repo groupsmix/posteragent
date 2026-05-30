@@ -7,6 +7,7 @@ import type {
 import { PLAYBOOKS } from '../services/freelance/types'
 import { logEvent, updateJobStatus, updateTaskStatus } from '../services/freelance/events'
 import { runFreelanceJob } from '../services/freelance/orchestrator'
+import { rateLimit } from '../middleware/rate-limit'
 
 export const freelanceRoutes = new Hono<{ Bindings: Env }>()
 
@@ -112,8 +113,8 @@ freelanceRoutes.post('/jobs', async (c) => {
 
 // ── Start job (kick off orchestrator) ─────────────────────────
 
-freelanceRoutes.post('/jobs/:id/start', async (c) => {
-  const id = c.req.param('id')
+freelanceRoutes.post('/jobs/:id/start', rateLimit(10), async (c) => {
+  const id = c.req.param('id') ?? ''
   const job = await c.env.DB.prepare('SELECT * FROM freelance_jobs WHERE id = ?')
     .bind(id).first<FreelanceJob>()
   if (!job) return c.json({ error: 'Job not found' }, 404)
