@@ -44,6 +44,7 @@ import { emailRoutes } from './routes/email'
 import { competitorRoutes } from './routes/competitors'
 import { observabilityRoutes } from './routes/observability'
 import { freelanceRoutes } from './routes/freelance'
+import { opportunityRoutes } from './routes/opportunities'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -136,6 +137,7 @@ api.route('/email', emailRoutes)
 api.route('/competitors', competitorRoutes)
 api.route('/observability', observabilityRoutes)
 api.route('/freelance', freelanceRoutes)
+api.route('/opportunities', opportunityRoutes)
 
 // Mount API routes under /api
 app.route('/api', api)
