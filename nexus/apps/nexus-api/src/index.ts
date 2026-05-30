@@ -38,6 +38,7 @@ import { scoringRoutes } from './routes/scoring'
 import { podRoutes } from './routes/pod'
 import { browserActionRoutes } from './routes/browser-actions'
 import { hyperbeamRoutes } from './routes/hyperbeam'
+import { emailRoutes } from './routes/email'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -78,7 +79,7 @@ const api = new Hono<{ Bindings: Env }>()
 api.use('*', async (c, next) => {
   if (c.req.method === 'OPTIONS') return next()
   const path = c.req.path // full path, e.g. /api/auth/login
-  if (path.startsWith('/api/auth/') || path.startsWith('/api/assets/')) return next()
+  if (path.startsWith('/api/auth/') || path.startsWith('/api/assets/') || path === '/api/email/subscribe') return next()
   const hash = await getAccessHash(c.env)
   if (!hash) return next() // not protected yet
   const auth = c.req.header('Authorization') || ''
@@ -124,6 +125,7 @@ api.route('/products', scoringRoutes)
 api.route('/pod', podRoutes)
 api.route('/browser', browserActionRoutes)
 api.route('/hyperbeam', hyperbeamRoutes)
+api.route('/email', emailRoutes)
 
 // Mount API routes under /api
 app.route('/api', api)

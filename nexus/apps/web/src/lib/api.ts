@@ -252,6 +252,35 @@ export interface AutopilotStatus {
   recent: AutopilotLogEntry[]
 }
 
+// Email list builder types
+export interface Subscriber {
+  id: string
+  email: string
+  name: string | null
+  source: string | null
+  subscribed_at: string
+  unsubscribed_at: string | null
+}
+
+export interface SubscribersResponse {
+  subscribers: Subscriber[]
+  total: number
+  active: number
+}
+
+export interface EmailCampaign {
+  id: string
+  subject: string
+  body: string
+  product_id: string | null
+  status: string
+  sent_at: string | null
+  open_count: number
+  click_count: number
+  created_at: string
+  product_name?: string | null
+}
+
 export interface MarketingLogEntry {
   channel: string | null
   content: string | null
@@ -848,4 +877,24 @@ export const api = {
     const qs = productId ? `?product_id=${productId}` : ''
     return apiFetch<{ listings: PlatformListing[] }>(`/api/browser/platforms/listings${qs}`)
   },
+
+  // Email list builder
+  subscribe: (data: { email: string; name?: string; source?: string }) =>
+    apiFetch<{ ok: boolean; id: string }>('/api/email/subscribe', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getSubscribers: () => apiFetch<SubscribersResponse>('/api/email/subscribers'),
+  unsubscribe: (id: string) => apiFetch<{ ok: boolean }>(`/api/email/subscribers/${id}`, { method: 'DELETE' }),
+  createCampaign: (data: { product_id?: string; subject?: string; body?: string }) =>
+    apiFetch<{ ok: boolean; campaign: EmailCampaign }>('/api/email/campaigns', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getCampaigns: () => apiFetch<{ campaigns: EmailCampaign[] }>('/api/email/campaigns'),
+  sendCampaign: (id: string) =>
+    apiFetch<{ ok: boolean; sent_to: number; campaign_id: string; sent_at: string }>(
+      `/api/email/campaigns/${id}/send`,
+      { method: 'POST' },
+    ),
 }
