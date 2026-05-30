@@ -512,6 +512,40 @@ export interface PODStats {
   revenue_estimate_usd: number
 }
 
+// A/B Testing types
+export interface ABTest {
+  id: string
+  product_id: string
+  variant_a_title: string
+  variant_a_description: string
+  variant_b_title: string
+  variant_b_description: string
+  variant_a_views: number
+  variant_b_views: number
+  variant_a_conversions: number
+  variant_b_conversions: number
+  winner: string | null
+  status: string
+  created_at: string
+  product_name?: string | null
+}
+
+export interface ABTestDetail extends ABTest {
+  stats: {
+    variant_a_conversion_rate: number
+    variant_b_conversion_rate: number
+    total_views: number
+    confidence: 'low' | 'medium' | 'high'
+  }
+}
+
+export interface ABTestCompleteResult {
+  ok: boolean
+  winner: string
+  variant_a_rate: number
+  variant_b_rate: number
+}
+
 const TOKEN_KEY = 'nexus_token'
 
 export function getToken(): string | null {
@@ -848,4 +882,23 @@ export const api = {
     const qs = productId ? `?product_id=${productId}` : ''
     return apiFetch<{ listings: PlatformListing[] }>(`/api/browser/platforms/listings${qs}`)
   },
+
+  // A/B Testing
+  getABTests: (status?: string) => {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : ''
+    return apiFetch<{ tests: ABTest[] }>(`/api/ab-tests${qs}`)
+  },
+  getABTest: (id: string) => apiFetch<ABTestDetail>(`/api/ab-tests/${id}`),
+  createABTest: (productId: string) =>
+    apiFetch<ABTest>('/api/ab-tests', {
+      method: 'POST',
+      body: JSON.stringify({ product_id: productId }),
+    }),
+  recordABEvent: (id: string, variant: 'a' | 'b', event: 'view' | 'conversion') =>
+    apiFetch<{ ok: boolean }>(`/api/ab-tests/${id}/record`, {
+      method: 'POST',
+      body: JSON.stringify({ variant, event }),
+    }),
+  completeABTest: (id: string) =>
+    apiFetch<ABTestCompleteResult>(`/api/ab-tests/${id}/complete`, { method: 'POST' }),
 }
