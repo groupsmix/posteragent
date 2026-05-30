@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
 import { rateLimit } from '../middleware/rate-limit'
+import { kvCache } from '../middleware/kv-cache'
 
 export const opportunityRoutes = new Hono<{ Bindings: Env }>()
 
@@ -122,6 +123,22 @@ opportunityRoutes.post('/', async (c) => {
   const validFormats = ['freelance', 'digital_product', 'pod', 'content']
   if (!validFormats.includes(body.suggested_format)) {
     return c.json({ error: `Invalid format. Must be one of: ${validFormats.join(', ')}` }, 400)
+  }
+
+  const scoreRanges: [string, number, number][] = [
+    ['score_demand', 0, 20],
+    ['score_competition_gap', 0, 15],
+    ['score_buyer_urgency', 0, 15],
+    ['score_ease', 0, 15],
+    ['score_monetization', 0, 15],
+    ['score_timing', 0, 10],
+    ['score_safety', 0, 10],
+  ]
+  for (const [field, min, max] of scoreRanges) {
+    const val = body[field as keyof CreateOpportunityInput] as number | undefined
+    if (val !== undefined && (val < min || val > max)) {
+      return c.json({ error: `${field} must be between ${min} and ${max}` }, 400)
+    }
   }
 
   const id = crypto.randomUUID().replace(/-/g, '')
@@ -274,7 +291,7 @@ opportunityRoutes.post('/niche-factory', rateLimit(5), async (c) => {
 
 // ── Dashboard summary ────────────────────────────────────────
 
-opportunityRoutes.get('/summary', async (c) => {
+opportunityRoutes.get('/summary', kvCache(60), async (c) => {
   const topOpps = await c.env.DB.prepare(
     'SELECT * FROM opportunities WHERE status IN (?, ?) AND total_score >= 70 ORDER BY total_score DESC LIMIT 5'
   ).bind('new', 'watchlist').all<OpportunityRow>()

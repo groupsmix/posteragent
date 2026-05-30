@@ -35,6 +35,15 @@ const URGENCY_COLORS: Record<string, string> = {
   urgent: 'text-red-400',
 }
 
+const SCAN_PHASES = [
+  'Collecting trend signals...',
+  'Analyzing Google Trends & search data...',
+  'Checking Etsy & marketplace trends...',
+  'Evaluating competition gaps...',
+  'Scoring opportunities (demand, urgency, ease)...',
+  'Ranking & filtering top picks...',
+] as const
+
 function ScoreBar({ label, value, max }: { label: string; value: number; max: number }) {
   const pct = max > 0 ? (value / max) * 100 : 0
   return (
@@ -221,6 +230,7 @@ export default function OpportunitiesPage() {
   const [summary, setSummary] = useState<OpportunitySummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [scanning, setScanning] = useState(false)
+  const [scanPhase, setScanPhase] = useState(0)
   const [nicheInput, setNicheInput] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('')
   const [filterFormat, setFilterFormat] = useState<string>('')
@@ -248,11 +258,26 @@ export default function OpportunitiesPage() {
 
   const handleScan = async () => {
     setScanning(true)
+    setScanPhase(0)
+    const phaseTimer = setInterval(() => {
+      setScanPhase((p) => Math.min(p + 1, SCAN_PHASES.length - 1))
+    }, 2500)
     try {
       const result = await api.scanOpportunities(nicheInput || undefined)
-      if (result.scanned > 0) load()
-    } catch { toast.error('Scan failed') }
+      clearInterval(phaseTimer)
+      setScanPhase(SCAN_PHASES.length - 1)
+      if (result.scanned > 0) {
+        toast.success(`Found ${result.scanned} new opportunities`)
+        load()
+      } else {
+        toast.info('No new opportunities found — try a different niche')
+      }
+    } catch {
+      clearInterval(phaseTimer)
+      toast.error('Scan failed — check your connection and try again')
+    }
     setScanning(false)
+    setScanPhase(0)
   }
 
   const handleStatusChange = async (id: string, status: string) => {
@@ -296,26 +321,45 @@ export default function OpportunitiesPage() {
       <PageBody>
         {/* Scan bar */}
         <div className="rounded-lg border border-border bg-card p-4 mb-6">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 value={nicheInput}
                 onChange={(e) => setNicheInput(e.target.value)}
-                placeholder="Enter a niche to scan (e.g. 'dentists', 'Etsy sellers', 'fitness coaches')... or leave empty for broad scan"
+                placeholder="Enter a niche (e.g. 'dentists')... or leave empty"
                 className="w-full pl-9 pr-4 py-2 rounded-md border border-border bg-background text-sm focus:ring-1 focus:ring-primary outline-none"
               />
             </div>
             <button
               onClick={handleScan}
               disabled={scanning}
-              className="inline-flex items-center gap-2 rounded-md bg-gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50 whitespace-nowrap"
             >
               {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
               {scanning ? 'Scanning...' : 'Scan for Opportunities'}
             </button>
           </div>
+          {scanning && (
+            <div className="mt-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-500"
+                    style={{ width: `${((scanPhase + 1) / SCAN_PHASES.length) * 100}%` }}
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {scanPhase + 1}/{SCAN_PHASES.length}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                {SCAN_PHASES[scanPhase]}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Filters */}

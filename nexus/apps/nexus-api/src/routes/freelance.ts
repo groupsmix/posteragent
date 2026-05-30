@@ -8,6 +8,7 @@ import { PLAYBOOKS } from '../services/freelance/types'
 import { logEvent, updateJobStatus, updateTaskStatus } from '../services/freelance/events'
 import { runFreelanceJob } from '../services/freelance/orchestrator'
 import { rateLimit } from '../middleware/rate-limit'
+import { kvCache } from '../middleware/kv-cache'
 
 export const freelanceRoutes = new Hono<{ Bindings: Env }>()
 
@@ -412,7 +413,7 @@ freelanceRoutes.post('/jobs/:id/portfolio', async (c) => {
 
 // ── Owner command center ──────────────────────────────────────
 
-freelanceRoutes.get('/command-center', async (c) => {
+freelanceRoutes.get('/command-center', kvCache(30), async (c) => {
   const now = new Date()
 
   // Jobs due soon (deadline within 48 hours)

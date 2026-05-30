@@ -76,7 +76,7 @@ function VariantCard({
       </div>
       <h3 className="text-sm font-medium mb-1 line-clamp-2">{title}</h3>
       <p className="text-xs text-muted-foreground mb-4 line-clamp-3">{description || '—'}</p>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
             <Eye className="h-3 w-3" /> Views
@@ -135,7 +135,7 @@ function TestRow({
         <StatusBadge status={test.status} />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div className="rounded-lg border border-border/50 p-3">
           <div className="text-xs text-muted-foreground mb-1">Variant A</div>
           <div className="text-xs truncate">{test.variant_a_title}</div>

@@ -78,7 +78,7 @@ export default function DeliverablePage() {
           {qualityScore && (
             <div className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg">
               <h3 className="text-white font-medium mb-3">CEO Quality Score</h3>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {([
                   { label: 'Brief Match', val: qualityScore.brief_match },
                   { label: 'Completeness', val: qualityScore.completeness },

@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { AppShell } from '@/components/shell/AppShell'
 import ToastContainer from '@/components/shell/ToastContainer'
 import { ErrorBoundary } from '@/components/shell/ErrorBoundary'
+import KeyboardShortcuts from '@/components/shell/KeyboardShortcuts'
 
 export const metadata: Metadata = {
   title: 'NEXUS — AI Product Engine',
@@ -21,6 +22,7 @@ export default function RootLayout({
           <AppShell>{children}</AppShell>
         </ErrorBoundary>
         <ToastContainer />
+        <KeyboardShortcuts />
       </body>
     </html>
   )
