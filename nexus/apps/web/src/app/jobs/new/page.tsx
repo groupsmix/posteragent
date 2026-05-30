@@ -89,7 +89,7 @@ export default function NewJobPage() {
           )}
 
           {/* Client & Title */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-1.5">Client Name *</label>
               <input
@@ -115,7 +115,7 @@ export default function NewJobPage() {
           {/* Job Type */}
           <div>
             <label className="block text-sm font-medium text-zinc-300 mb-1.5">Job Type *</label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {JOB_TYPES.map((t) => (
                 <button
                   key={t.value}
@@ -147,7 +147,7 @@ export default function NewJobPage() {
           </div>
 
           {/* Deadline & Budget */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-1.5">Deadline</label>
               <input
@@ -198,7 +198,7 @@ export default function NewJobPage() {
             <summary className="text-sm text-zinc-400 cursor-pointer hover:text-zinc-300">
               Advanced Settings
             </summary>
-            <div className="mt-3 grid grid-cols-3 gap-4">
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs text-zinc-500 mb-1">Priority (1-5)</label>
                 <input

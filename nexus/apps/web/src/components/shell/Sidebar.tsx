@@ -30,6 +30,7 @@ const topItems: Item[] = [
 const defaultSections: { title: string; items: Item[]; collapsible?: boolean }[] = [
   {
     title: 'Domains',
+    collapsible: true,
     items: [
       { to: '/jobs', label: 'Freelance Jobs', icon: Briefcase },
       { to: '/jobs/new?type=digital_product', label: 'Digital Products', icon: Package },
@@ -41,6 +42,7 @@ const defaultSections: { title: string; items: Item[]; collapsible?: boolean }[]
   },
   {
     title: 'Engine',
+    collapsible: true,
     items: [
       { to: '/autopilot', label: 'Autopilot', icon: Rocket },
       { to: '/review', label: 'Review Queue', icon: ShieldCheck },
@@ -105,18 +107,26 @@ function useSidebarSections() {
 type ThemeMode = 'dark' | 'light' | 'auto'
 
 function useTheme() {
-  const [theme, setThemeState] = useState<ThemeMode>('dark')
+  const [theme, setThemeState] = useState<ThemeMode>(() => {
+    if (typeof window === 'undefined') return 'dark'
+    const stored = localStorage.getItem('nexus_theme')
+    if (stored && ['dark', 'light', 'auto'].includes(stored)) return stored as ThemeMode
+    return 'dark'
+  })
   useEffect(() => {
+    applyTheme(theme)
     api.getUserPreference('theme').then((res) => {
       if (res?.value && ['dark', 'light', 'auto'].includes(res.value)) {
         setThemeState(res.value as ThemeMode)
         applyTheme(res.value as ThemeMode)
+        localStorage.setItem('nexus_theme', res.value)
       }
     }).catch(() => {})
   }, [])
   const setTheme = (t: ThemeMode) => {
     setThemeState(t)
     applyTheme(t)
+    localStorage.setItem('nexus_theme', t)
     api.setUserPreference('theme', t).catch(() => {})
   }
   return { theme, setTheme }
@@ -180,9 +190,13 @@ function NavList({ onNavigate, sections }: { onNavigate?: () => void; sections: 
     to === '/' ? pathname === '/' :
     to === '/settings' ? pathname === '/settings' :
     pathname === to || (to !== '/' && to !== '/settings' && pathname.startsWith(to))
-  const [systemOpen, setSystemOpen] = useState(
-    sections.find((s) => s.collapsible)?.items.some((i) => isActive(i.to)) ?? false
-  )
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {}
+    for (const sec of sections) {
+      initial[sec.title] = !sec.collapsible || sec.items.some((i) => isActive(i.to))
+    }
+    return initial
+  })
 
   const renderItem = (item: Item) => {
     const Icon = item.icon
@@ -209,26 +223,29 @@ function NavList({ onNavigate, sections }: { onNavigate?: () => void; sections: 
   return (
     <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
       <ul className="space-y-0.5">{topItems.map(renderItem)}</ul>
-      {sections.map((sec) => (
-        <div key={sec.title}>
-          {sec.collapsible ? (
-            <button
-              onClick={() => setSystemOpen((o) => !o)}
-              className="w-full flex items-center justify-between px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 hover:text-muted-foreground transition-colors"
-            >
-              {sec.title}
-              <ChevronDown className={cn('h-3 w-3 transition-transform duration-200', systemOpen ? '' : '-rotate-90')} />
-            </button>
-          ) : (
-            <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-              {sec.title}
-            </div>
-          )}
-          {(!sec.collapsible || systemOpen) && (
-            <ul className="space-y-0.5">{sec.items.map(renderItem)}</ul>
-          )}
-        </div>
-      ))}
+      {sections.map((sec) => {
+        const isOpen = openSections[sec.title] ?? true
+        return (
+          <div key={sec.title}>
+            {sec.collapsible ? (
+              <button
+                onClick={() => setOpenSections((prev) => ({ ...prev, [sec.title]: !prev[sec.title] }))}
+                className="w-full flex items-center justify-between px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 hover:text-muted-foreground transition-colors"
+              >
+                {sec.title}
+                <ChevronDown className={cn('h-3 w-3 transition-transform duration-200', isOpen ? '' : '-rotate-90')} />
+              </button>
+            ) : (
+              <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+                {sec.title}
+              </div>
+            )}
+            {isOpen && (
+              <ul className="space-y-0.5">{sec.items.map(renderItem)}</ul>
+            )}
+          </div>
+        )
+      })}
     </nav>
   )
 }
