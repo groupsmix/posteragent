@@ -38,6 +38,7 @@ import { scoringRoutes } from './routes/scoring'
 import { podRoutes } from './routes/pod'
 import { browserActionRoutes } from './routes/browser-actions'
 import { hyperbeamRoutes } from './routes/hyperbeam'
+import { competitorRoutes } from './routes/competitors'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -124,6 +125,7 @@ api.route('/products', scoringRoutes)
 api.route('/pod', podRoutes)
 api.route('/browser', browserActionRoutes)
 api.route('/hyperbeam', hyperbeamRoutes)
+api.route('/competitors', competitorRoutes)
 
 // Mount API routes under /api
 app.route('/api', api)

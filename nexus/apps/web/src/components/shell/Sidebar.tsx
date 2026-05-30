@@ -8,7 +8,7 @@ import {
   Settings as SettingsIcon, Globe2, Megaphone, History,
   Bot, CalendarClock, Rocket, LayoutDashboard, ChevronDown, DollarSign,
   Menu, X, LayoutGrid, Workflow, Brain, Sunrise, Shirt,
-  ShoppingCart, Briefcase, Link2, FileText,
+  ShoppingCart, Briefcase, Link2, FileText, Eye,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -38,6 +38,7 @@ const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
       { to: '/review', label: 'Review Queue', icon: ShieldCheck },
       { to: '/revenue', label: 'Revenue', icon: DollarSign },
       { to: '/learning', label: 'Learning Loop', icon: Brain },
+      { to: '/competitors', label: 'Competitors', icon: Eye },
     ],
   },
   {
