@@ -1144,6 +1144,98 @@ export const api = {
     apiFetch<CommandCenterData>('/api/freelance/command-center'),
   getIntakeQuestions: (jobType: string) =>
     apiFetch<{ questions: IntakeQuestionInfo[] }>(`/api/freelance/intake-questions/${jobType}`),
+
+  // ── Opportunity Radar ──────────────────────────────────────
+  getOpportunities: (params?: { status?: string; format?: string; min_score?: number; niche?: string }) => {
+    const qs = new URLSearchParams()
+    if (params?.status) qs.set('status', params.status)
+    if (params?.format) qs.set('format', params.format)
+    if (params?.min_score) qs.set('min_score', String(params.min_score))
+    if (params?.niche) qs.set('niche', params.niche)
+    const query = qs.toString()
+    return apiFetch<{ opportunities: OpportunityInfo[] }>(`/api/opportunities${query ? `?${query}` : ''}`)
+  },
+  getOpportunity: (id: string) =>
+    apiFetch<{ opportunity: OpportunityInfo }>(`/api/opportunities/${id}`),
+  createOpportunity: (data: CreateOpportunityInput) =>
+    apiFetch<{ ok: boolean; id: string }>('/api/opportunities', {
+      method: 'POST', body: JSON.stringify(data),
+    }),
+  updateOpportunityStatus: (id: string, status: string) =>
+    apiFetch<{ ok: boolean }>(`/api/opportunities/${id}/status`, {
+      method: 'PATCH', body: JSON.stringify({ status }),
+    }),
+  deleteOpportunity: (id: string) =>
+    apiFetch<{ ok: boolean }>(`/api/opportunities/${id}`, { method: 'DELETE' }),
+  scanOpportunities: (niche?: string) =>
+    apiFetch<{ ok: boolean; scanned: number; inserted_ids: string[] }>('/api/opportunities/scan', {
+      method: 'POST', body: JSON.stringify({ niche }),
+    }),
+  nicheFactory: (niche: string) =>
+    apiFetch<{ ok: boolean; niche: string; plan: string }>('/api/opportunities/niche-factory', {
+      method: 'POST', body: JSON.stringify({ niche }),
+    }),
+  getOpportunitySummary: () =>
+    apiFetch<OpportunitySummary>('/api/opportunities/summary'),
+}
+
+// ── Opportunity types ────────────────────────────────────────
+
+export interface OpportunityInfo {
+  id: string
+  trend_name: string
+  target_buyer: string
+  product_idea: string
+  why_it_sells: string
+  evidence: Array<{ source: string; url?: string; snippet?: string }>
+  competition_level: string
+  urgency: string
+  risk_level: string
+  suggested_format: string
+  difficulty: string
+  confidence_score: number
+  score_demand: number
+  score_competition_gap: number
+  score_buyer_urgency: number
+  score_ease: number
+  score_monetization: number
+  score_timing: number
+  score_safety: number
+  total_score: number
+  niche: string | null
+  category: string | null
+  source_signals: string[]
+  status: string
+  is_guess: boolean
+  linked_job_id: string | null
+  linked_product_id: string | null
+  created_at: string
+  updated_at: string
+  expires_at: string | null
+}
+
+export interface CreateOpportunityInput {
+  trend_name: string
+  target_buyer: string
+  product_idea: string
+  why_it_sells: string
+  evidence?: Array<{ source: string; url?: string; snippet?: string }>
+  suggested_format: string
+  niche?: string
+  score_demand?: number
+  score_competition_gap?: number
+  score_buyer_urgency?: number
+  score_ease?: number
+  score_monetization?: number
+  score_timing?: number
+  score_safety?: number
+  is_guess?: boolean
+}
+
+export interface OpportunitySummary {
+  top_opportunities: OpportunityInfo[]
+  breakdown: Array<{ status: string; count: number; suggested_format: string; avg_score: number }>
+  total: number
 }
 
 // ── Freelance types ──────────────────────────────────────────
