@@ -45,4 +45,7 @@ export interface Env {
 
   // Hyperbeam API key for live browser sessions
   HYPERBEAM_API_KEY?: string
+
+  // Gumroad access token for auto-publish
+  GUMROAD_ACCESS_TOKEN?: string
 }

@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
+import { publishProductToGumroad } from '../services/gumroad-publisher'
 
 export const reviewRoutes = new Hono<{ Bindings: Env }>()
 
@@ -27,8 +28,29 @@ reviewRoutes.post('/:productId/approve', async (c) => {
     
     // Invalidate cache
     await c.env.CONFIG.delete(`product:${productId}`)
-    
-    return c.json({ message: 'Product approved', product_id: productId })
+
+    // Auto-publish to Gumroad if the setting is enabled
+    let gumroad: { gumroad_product_id?: string; gumroad_url?: string } | undefined
+    try {
+      const autoGumroad = await c.env.DB.prepare(
+        `SELECT value FROM settings WHERE key = 'auto_publish_gumroad'`,
+      ).first<{ value: string }>()
+      if (autoGumroad && autoGumroad.value === 'true') {
+        const gr = await publishProductToGumroad(c.env, productId)
+        if (gr.ok) {
+          gumroad = {
+            gumroad_product_id: gr.gumroad_product_id,
+            gumroad_url: gr.gumroad_url,
+          }
+        } else {
+          console.error('Gumroad auto-publish failed:', gr.error)
+        }
+      }
+    } catch (gpErr) {
+      console.error('Gumroad auto-publish error:', gpErr)
+    }
+
+    return c.json({ message: 'Product approved', product_id: productId, gumroad })
   } catch (err) {
     console.error('Error approving product:', err)
     return c.json({ error: 'Failed to approve product' }, 500)

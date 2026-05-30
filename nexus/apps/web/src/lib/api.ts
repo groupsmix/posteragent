@@ -794,6 +794,11 @@ export const api = {
   },
   getGumroadAnalytics: (productId: string) =>
     apiFetch<{ analytics: GumroadAnalyticsInfo }>(`/api/gumroad/products/${productId}/analytics`),
+  publishProductToGumroad: (productId: string) =>
+    apiFetch<{ ok: boolean; gumroad_product_id: string; gumroad_url: string }>(
+      `/api/products/${productId}/publish-gumroad`,
+      { method: 'POST' },
+    ),
 
   // Scoring + quality gates
   getProductScore: (id: string) =>
