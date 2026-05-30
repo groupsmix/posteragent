@@ -23,10 +23,10 @@ const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
   {
     title: 'Domains',
     items: [
-      { to: '/digital', label: 'Digital Products', icon: Package },
-      { to: '/print-on-demand', label: 'Print on Demand', icon: Shirt },
+      { to: '/jobs', label: 'Freelance Jobs', icon: Briefcase },
+      { to: '/jobs/new?type=digital_product', label: 'Digital Products', icon: Package },
+      { to: '/jobs/new?type=pod_product', label: 'Print on Demand', icon: Shirt },
       { to: '/content', label: 'Content & Media', icon: FileText },
-      { to: '/freelance-services', label: 'Freelance Services', icon: Briefcase },
       { to: '/affiliate-marketing', label: 'Affiliate Marketing', icon: Link2 },
       { to: '/ecommerce-retail', label: 'E-Commerce & Retail', icon: ShoppingCart },
     ],
