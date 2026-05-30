@@ -23,12 +23,12 @@ const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
   {
     title: 'Domains',
     items: [
-      { to: '/products', label: 'Digital Products', icon: Package },
-      { to: '/pod', label: 'Print on Demand', icon: Shirt },
-      { to: '/marketing', label: 'Content & Media', icon: FileText },
-      { to: '/manager/domains', label: 'Freelance Services', icon: Briefcase },
-      { to: '/trends', label: 'Affiliate Marketing', icon: Link2 },
-      { to: '/publish', label: 'E-Commerce & Retail', icon: ShoppingCart },
+      { to: '/digital', label: 'Digital Products', icon: Package },
+      { to: '/print-on-demand', label: 'Print on Demand', icon: Shirt },
+      { to: '/content', label: 'Content & Media', icon: FileText },
+      { to: '/freelance-services', label: 'Freelance Services', icon: Briefcase },
+      { to: '/affiliate-marketing', label: 'Affiliate Marketing', icon: Link2 },
+      { to: '/ecommerce-retail', label: 'E-Commerce & Retail', icon: ShoppingCart },
     ],
   },
   {
