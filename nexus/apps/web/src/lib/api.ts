@@ -795,6 +795,15 @@ export const api = {
   getGumroadAnalytics: (productId: string) =>
     apiFetch<{ analytics: GumroadAnalyticsInfo }>(`/api/gumroad/products/${productId}/analytics`),
 
+  // User preferences (sidebar order, theme, layout)
+  getUserPreference: (key: string) =>
+    apiFetch<{ key: string; value: string }>(`/api/settings/preference/${key}`).catch(() => null),
+  setUserPreference: (key: string, value: string) =>
+    apiFetch<{ ok: boolean }>('/api/settings/preference', {
+      method: 'POST',
+      body: JSON.stringify({ key, value }),
+    }),
+
   // Scoring + quality gates
   getProductScore: (id: string) =>
     apiFetch<ProductScoreResponse>(`/api/products/${id}/score`),

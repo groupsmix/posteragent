@@ -6,6 +6,7 @@ import {
   Bot, Send, Loader2, CheckCircle2, XCircle, ExternalLink, Wrench,
   ChevronDown, ChevronRight, Clock, Zap, Search, ShoppingCart, Megaphone,
   Globe, Image as ImageIcon, AlertTriangle,
+  Settings as SettingsIcon, LayoutGrid, Palette, Download, Layers, CalendarClock, Trash2,
 } from 'lucide-react'
 import { api, API_BASE, type ManagerMessage, type AgentStep, type ProductScoreResponse, type ActionResult, type ActionStep as ActionStepType } from '@/lib/api'
 import { ScoreBadge } from '@/components/shared/ScoreBadge'
@@ -62,6 +63,14 @@ const TOOL_LABELS: Record<string, string> = {
   create_pod: 'Created POD product',
   run_campaign: 'Ran campaign',
   analyze_niche: 'Analyzed niche',
+  update_settings: 'Updated settings',
+  reorder_sidebar: 'Reordered sidebar',
+  manage_domain: 'Managed domain',
+  manage_schedule: 'Managed schedule',
+  bulk_action: 'Bulk action',
+  change_theme: 'Changed theme',
+  export_data: 'Exported data',
+  dashboard_layout: 'Changed layout',
 }
 
 const ACTION_ICONS: Record<string, typeof Bot> = {
@@ -71,6 +80,14 @@ const ACTION_ICONS: Record<string, typeof Bot> = {
   create_pod: ImageIcon,
   run_campaign: Megaphone,
   analyze_niche: Search,
+  update_settings: SettingsIcon,
+  reorder_sidebar: LayoutGrid,
+  manage_domain: Globe,
+  manage_schedule: CalendarClock,
+  bulk_action: Trash2,
+  change_theme: Palette,
+  export_data: Download,
+  dashboard_layout: Layers,
 }
 
 function StepStatusIcon({ status }: { status: ActionStepType['status'] }) {
@@ -141,6 +158,33 @@ function LiveActionPanel({ result }: { result: ActionResult }) {
             </div>
           )}
         </div>
+      )}
+    </div>
+  )
+}
+
+const DASHBOARD_TOOLS = new Set([
+  'update_settings', 'reorder_sidebar', 'manage_domain', 'manage_schedule',
+  'bulk_action', 'change_theme', 'export_data', 'dashboard_layout',
+])
+
+function ConfirmationCard({ step }: { step: AgentStep }) {
+  const Icon = ACTION_ICONS[step.tool] || Wrench
+  return (
+    <div className="flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-xs bg-emerald-500/5 border-emerald-500/20">
+      <div className="mt-0.5 h-6 w-6 shrink-0 rounded-full bg-emerald-500/15 flex items-center justify-center">
+        <Icon className="h-3 w-3 text-emerald-600" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="font-medium text-emerald-700 dark:text-emerald-400">
+          {TOOL_LABELS[step.tool] || step.tool}
+        </div>
+        <div className="mt-0.5 text-muted-foreground">{step.summary}</div>
+      </div>
+      {step.ok ? (
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+      ) : (
+        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
       )}
     </div>
   )
@@ -236,7 +280,14 @@ export default function CeoManagerPage() {
                 {t.steps && t.steps.length > 0 && (
                   <div className="mt-3 space-y-1.5 border-t border-border/40 pt-3">
                     <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Actions taken</div>
-                    {t.steps.map((s, j) => (
+                    {t.steps.filter(s => DASHBOARD_TOOLS.has(s.tool)).length > 0 && (
+                      <div className="space-y-1.5 mb-2">
+                        {t.steps.filter(s => DASHBOARD_TOOLS.has(s.tool)).map((s, j) => (
+                          <ConfirmationCard key={`dc-${j}`} step={s} />
+                        ))}
+                      </div>
+                    )}
+                    {t.steps.filter(s => !DASHBOARD_TOOLS.has(s.tool)).map((s, j) => (
                       <div key={j} className="flex items-start gap-2 rounded-lg border border-border/40 bg-muted/30 px-2.5 py-2 text-xs">
                         {s.ok ? (
                           <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />

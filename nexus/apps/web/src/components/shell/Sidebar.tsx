@@ -1,25 +1,33 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Package, ShieldCheck,
-  Settings as SettingsIcon, Globe2, Megaphone, History,
+  Settings as SettingsIcon, Globe2, History,
   Bot, CalendarClock, Rocket, LayoutDashboard, ChevronDown, DollarSign,
   Menu, X, LayoutGrid, Workflow, Brain, Sunrise, Shirt,
   ShoppingCart, Briefcase, Link2, FileText,
+  Sun, Moon, Monitor, Layers,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { api } from '@/lib/api'
 
 type Item = { to: string; label: string; icon: React.ComponentType<{ className?: string }> }
+
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  LayoutDashboard, Bot, Package, Shirt, FileText, Briefcase, Link2, ShoppingCart,
+  Rocket, ShieldCheck, DollarSign, Brain, Sunrise, Globe2, CalendarClock, History,
+  SettingsIcon, LayoutGrid, Workflow,
+}
 
 const topItems: Item[] = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
   { to: '/ceo', label: 'AI Assistant', icon: Bot },
 ]
 
-const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
+const defaultSections: { title: string; items: Item[]; collapsible?: boolean }[] = [
   {
     title: 'Domains',
     items: [
@@ -53,6 +61,99 @@ const sections: { title: string; items: Item[]; collapsible?: boolean }[] = [
   },
 ]
 
+function resolveIcon(name?: string): React.ComponentType<{ className?: string }> | undefined {
+  if (!name) return undefined
+  return ICON_MAP[name]
+}
+
+function useSidebarSections() {
+  const [sections, setSections] = useState(defaultSections)
+  useEffect(() => {
+    api.getUserPreference('sidebar_order').then((res) => {
+      if (!res?.value) return
+      try {
+        const custom = JSON.parse(res.value) as { title: string; items: { to: string; label: string; icon?: string }[] }[]
+        if (!Array.isArray(custom) || custom.length === 0) return
+        const defaultItemMap = new Map<string, Item>()
+        for (const sec of defaultSections) for (const it of sec.items) defaultItemMap.set(it.to, it)
+        for (const top of topItems) defaultItemMap.set(top.to, top)
+        const merged = custom.map((sec) => ({
+          title: sec.title,
+          items: sec.items
+            .map((it) => {
+              const existing = defaultItemMap.get(it.to)
+              return {
+                to: it.to,
+                label: it.label || existing?.label || it.to,
+                icon: resolveIcon(it.icon) || existing?.icon || LayoutGrid,
+              }
+            }),
+        }))
+        setSections(merged)
+      } catch { /* ignore parse errors */ }
+    }).catch(() => {})
+  }, [])
+  return sections
+}
+
+type ThemeMode = 'dark' | 'light' | 'auto'
+
+function useTheme() {
+  const [theme, setThemeState] = useState<ThemeMode>('dark')
+  useEffect(() => {
+    api.getUserPreference('theme').then((res) => {
+      if (res?.value && ['dark', 'light', 'auto'].includes(res.value)) {
+        setThemeState(res.value as ThemeMode)
+        applyTheme(res.value as ThemeMode)
+      }
+    }).catch(() => {})
+  }, [])
+  const setTheme = (t: ThemeMode) => {
+    setThemeState(t)
+    applyTheme(t)
+    api.setUserPreference('theme', t).catch(() => {})
+  }
+  return { theme, setTheme }
+}
+
+function applyTheme(t: ThemeMode) {
+  const html = document.documentElement
+  if (t === 'light') { html.classList.remove('dark'); html.classList.add('light') }
+  else if (t === 'dark') { html.classList.remove('light'); html.classList.add('dark') }
+  else {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    if (prefersDark) { html.classList.remove('light'); html.classList.add('dark') }
+    else { html.classList.remove('dark'); html.classList.add('light') }
+  }
+}
+
+export type LayoutMode = 'compact' | 'expanded' | 'minimal'
+
+function useLayout() {
+  const [layout, setLayoutState] = useState<LayoutMode>('expanded')
+  useEffect(() => {
+    api.getUserPreference('dashboard_layout').then((res) => {
+      if (res?.value && ['compact', 'expanded', 'minimal'].includes(res.value)) {
+        setLayoutState(res.value as LayoutMode)
+      }
+    }).catch(() => {})
+  }, [])
+  const setLayout = (l: LayoutMode) => {
+    setLayoutState(l)
+    api.setUserPreference('dashboard_layout', l).catch(() => {})
+  }
+  return { layout, setLayout }
+}
+
+const themeIcons: Record<ThemeMode, React.ComponentType<{ className?: string }>> = {
+  dark: Moon,
+  light: Sun,
+  auto: Monitor,
+}
+
+const THEME_CYCLE: ThemeMode[] = ['dark', 'light', 'auto']
+const LAYOUT_CYCLE: LayoutMode[] = ['expanded', 'compact', 'minimal']
+
 function Brand() {
   return (
     <Link href="/" className="flex items-center gap-2.5">
@@ -67,7 +168,7 @@ function Brand() {
   )
 }
 
-function NavList({ onNavigate }: { onNavigate?: () => void }) {
+function NavList({ onNavigate, sections }: { onNavigate?: () => void; sections: typeof defaultSections }) {
   const pathname = usePathname() || '/'
   const isActive = (to: string) =>
     to === '/' ? pathname === '/' :
@@ -128,6 +229,20 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Sidebar() {
   const [open, setOpen] = useState(false)
+  const sections = useSidebarSections()
+  const { theme, setTheme } = useTheme()
+  const { layout, setLayout } = useLayout()
+
+  const ThemeIcon = themeIcons[theme]
+
+  const cycleTheme = () => {
+    const idx = THEME_CYCLE.indexOf(theme)
+    setTheme(THEME_CYCLE[(idx + 1) % THEME_CYCLE.length])
+  }
+  const cycleLayout = () => {
+    const idx = LAYOUT_CYCLE.indexOf(layout)
+    setLayout(LAYOUT_CYCLE[(idx + 1) % LAYOUT_CYCLE.length])
+  }
 
   return (
     <>
@@ -158,9 +273,17 @@ export function Sidebar() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <NavList onNavigate={() => setOpen(false)} />
-            <div className="px-4 py-3 border-t border-border text-[11px] text-muted-foreground/60">
-              NEXUS v4.0
+            <NavList onNavigate={() => setOpen(false)} sections={sections} />
+            <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+              <span className="text-[11px] text-muted-foreground/60">NEXUS v4.0</span>
+              <div className="flex items-center gap-1">
+                <button onClick={cycleTheme} className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors" title={`Theme: ${theme}`}>
+                  <ThemeIcon className="h-3.5 w-3.5" />
+                </button>
+                <button onClick={cycleLayout} className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors" title={`Layout: ${layout}`}>
+                  <Layers className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </aside>
         </div>
@@ -171,9 +294,17 @@ export function Sidebar() {
         <div className="px-5 py-5 border-b border-border">
           <Brand />
         </div>
-        <NavList />
-        <div className="px-4 py-3 border-t border-border text-[11px] text-muted-foreground/60">
-          NEXUS v4.0
+        <NavList sections={sections} />
+        <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+          <span className="text-[11px] text-muted-foreground/60">NEXUS v4.0</span>
+          <div className="flex items-center gap-1">
+            <button onClick={cycleTheme} className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors" title={`Theme: ${theme}`}>
+              <ThemeIcon className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={cycleLayout} className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors" title={`Layout: ${layout}`}>
+              <Layers className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </aside>
     </>
