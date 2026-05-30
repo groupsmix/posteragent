@@ -28,6 +28,8 @@ export interface Product {
   deliverable_url?: string | null
   deliverable_format?: string | null
   generated_offline?: number
+  gumroad_product_id?: string | null
+  gumroad_url?: string | null
   created_at: string
   updated_at: string
 }

@@ -10,7 +10,7 @@ import type { ProductDetail } from '@nexus/types'
 import { PageHeader, PageBody } from '@/components/shell/AppShell'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { ScoreBar } from '@/components/shared/ScoreBar'
-import { Loader2, ArrowLeft, CheckCircle2, XCircle, Edit3, Trash2 } from 'lucide-react'
+import { Loader2, ArrowLeft, CheckCircle2, XCircle, Edit3, Trash2, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -22,6 +22,7 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionBusy, setActionBusy] = useState(false)
+  const [gumroadBusy, setGumroadBusy] = useState(false)
 
   useEffect(() => {
     api
@@ -65,6 +66,20 @@ export default function ProductDetailPage() {
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete product')
       setActionBusy(false)
+    }
+  }
+
+  const handlePublishGumroad = async () => {
+    setGumroadBusy(true)
+    try {
+      const res = await api.publishProductToGumroad(id)
+      setProduct((p) =>
+        p ? { ...p, gumroad_product_id: res.gumroad_product_id, gumroad_url: res.gumroad_url } : p,
+      )
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to publish to Gumroad')
+    } finally {
+      setGumroadBusy(false)
     }
   }
 
@@ -239,6 +254,33 @@ export default function ProductDetailPage() {
                     Full Review
                   </Button>
                 </Link>
+                {product.gumroad_url ? (
+                  <a
+                    href={product.gumroad_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <Button variant="outline" className="w-full">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      View on Gumroad
+                    </Button>
+                  </a>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handlePublishGumroad}
+                    disabled={gumroadBusy}
+                  >
+                    {gumroadBusy ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                    )}
+                    Publish to Gumroad
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   className="w-full text-destructive hover:text-destructive"

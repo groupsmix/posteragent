@@ -38,6 +38,7 @@ export default function ReviewPage() {
   const [editing, setEditing] = useState<null | 'title' | 'description' | 'tags'>(null)
   const [genning, setGenning] = useState(false)
   const [fmt, setFmt] = useState('')
+  const [gumroadBusy, setGumroadBusy] = useState(false)
 
   useEffect(() => {
     api.getProductDetail(id).then(setP).catch(() => setP(null))
@@ -96,6 +97,18 @@ export default function ReviewPage() {
       alert('Could not generate the deliverable right now. The free AI engine may be busy — try again in a moment.')
     } finally {
       setGenning(false)
+    }
+  }
+
+  const publishGumroad = async () => {
+    setGumroadBusy(true)
+    try {
+      const res = await api.publishProductToGumroad(p.id)
+      setP({ ...p, gumroad_product_id: res.gumroad_product_id, gumroad_url: res.gumroad_url })
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to publish to Gumroad')
+    } finally {
+      setGumroadBusy(false)
     }
   }
 
@@ -509,6 +522,24 @@ export default function ReviewPage() {
             >
               <Download className="h-4 w-4" /> Download
             </a>
+            {p.gumroad_url ? (
+              <a
+                href={p.gumroad_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <ExternalLink className="h-4 w-4" /> Gumroad
+              </a>
+            ) : (
+              <button
+                onClick={publishGumroad}
+                disabled={gumroadBusy}
+                className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+              >
+                <ExternalLink className="h-4 w-4" /> {gumroadBusy ? 'Publishing…' : 'Publish to Gumroad'}
+              </button>
+            )}
             <button
               onClick={del}
               className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-red-500"
