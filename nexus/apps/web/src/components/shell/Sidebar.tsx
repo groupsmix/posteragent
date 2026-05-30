@@ -8,7 +8,7 @@ import {
   Settings as SettingsIcon, Globe2, History,
   Bot, CalendarClock, Rocket, LayoutDashboard, ChevronDown, DollarSign,
   Menu, X, LayoutGrid, Workflow, Brain, Sunrise, Shirt,
-  ShoppingCart, Briefcase, Link2, FileText, PenLine, Mail, Eye,
+  ShoppingCart, Briefcase, Link2, FileText, FlaskConical, PenLine, Mail, Eye,
   Sun, Moon, Monitor, Layers,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -46,6 +46,7 @@ const defaultSections: { title: string; items: Item[]; collapsible?: boolean }[]
       { to: '/review', label: 'Review Queue', icon: ShieldCheck },
       { to: '/revenue', label: 'Revenue', icon: DollarSign },
       { to: '/learning', label: 'Learning Loop', icon: Brain },
+      { to: '/ab-testing', label: 'A/B Testing', icon: FlaskConical },
       { to: '/blog', label: 'Blog Engine', icon: PenLine },
       { to: '/email', label: 'Email Lists', icon: Mail },
       { to: '/competitors', label: 'Competitors', icon: Eye },
