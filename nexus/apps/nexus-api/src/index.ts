@@ -38,6 +38,7 @@ import { scoringRoutes } from './routes/scoring'
 import { podRoutes } from './routes/pod'
 import { browserActionRoutes } from './routes/browser-actions'
 import { hyperbeamRoutes } from './routes/hyperbeam'
+import { blogRoutes } from './routes/blog'
 import { emailRoutes } from './routes/email'
 import { competitorRoutes } from './routes/competitors'
 import { observabilityRoutes } from './routes/observability'
@@ -128,6 +129,7 @@ api.route('/products', scoringRoutes)
 api.route('/pod', podRoutes)
 api.route('/browser', browserActionRoutes)
 api.route('/hyperbeam', hyperbeamRoutes)
+api.route('/blog', blogRoutes)
 api.route('/email', emailRoutes)
 api.route('/competitors', competitorRoutes)
 api.route('/observability', observabilityRoutes)
