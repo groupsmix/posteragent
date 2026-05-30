@@ -46,6 +46,7 @@ const defaultSections: { title: string; items: Item[]; collapsible?: boolean }[]
       { to: '/review', label: 'Review Queue', icon: ShieldCheck },
       { to: '/revenue', label: 'Revenue', icon: DollarSign },
       { to: '/learning', label: 'Learning Loop', icon: Brain },
+      { to: '/competitors', label: 'Competitors', icon: Eye },
     ],
   },
   {

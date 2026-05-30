@@ -149,6 +149,23 @@ export interface PlatformListing {
   created_at: string
 }
 
+export interface CompetitorEntry {
+  id: string
+  name: string
+  platform: string
+  url: string
+  niche: string | null
+  last_checked_at: string | null
+  created_at: string
+}
+
+export interface CompetitorInsightsResponse {
+  insights: string
+  trending_products: { title: string; reason: string }[]
+  price_gaps: { niche: string; observation: string }[]
+  opportunities: { title: string; description: string }[]
+}
+
 export interface AgentReply {
   reply: string
   steps: AgentStep[]
@@ -862,6 +879,21 @@ export const api = {
     const qs = productId ? `?product_id=${productId}` : ''
     return apiFetch<{ listings: PlatformListing[] }>(`/api/browser/platforms/listings${qs}`)
   },
+
+  // Competitor Tracker
+  getCompetitors: () =>
+    apiFetch<{ competitors: CompetitorEntry[] }>('/api/competitors'),
+  addCompetitor: (data: { name: string; url: string; platform: string; niche?: string }) =>
+    apiFetch<CompetitorEntry>('/api/competitors', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteCompetitor: (id: string) =>
+    apiFetch<{ ok: boolean }>(`/api/competitors/${id}`, { method: 'DELETE' }),
+  scanCompetitor: (id: string) =>
+    apiFetch<{ ok: boolean; products_found: number; summary: string }>(`/api/competitors/${id}/scan`, { method: 'POST' }),
+  getCompetitorInsights: () =>
+    apiFetch<CompetitorInsightsResponse>('/api/competitors/insights'),
 
   // Observability
   getObservability: () =>
