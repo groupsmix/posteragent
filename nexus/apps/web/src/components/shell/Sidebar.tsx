@@ -8,7 +8,7 @@ import {
   Settings as SettingsIcon, Globe2, History,
   Bot, CalendarClock, Rocket, LayoutDashboard, ChevronDown, DollarSign,
   Menu, X, LayoutGrid, Workflow, Brain, Sunrise, Shirt,
-  ShoppingCart, Briefcase, Link2, FileText,
+  ShoppingCart, Briefcase, Link2, FileText, Eye,
   Sun, Moon, Monitor, Layers,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -31,10 +31,10 @@ const defaultSections: { title: string; items: Item[]; collapsible?: boolean }[]
   {
     title: 'Domains',
     items: [
-      { to: '/digital', label: 'Digital Products', icon: Package },
-      { to: '/print-on-demand', label: 'Print on Demand', icon: Shirt },
+      { to: '/jobs', label: 'Freelance Jobs', icon: Briefcase },
+      { to: '/jobs/new?type=digital_product', label: 'Digital Products', icon: Package },
+      { to: '/jobs/new?type=pod_product', label: 'Print on Demand', icon: Shirt },
       { to: '/content', label: 'Content & Media', icon: FileText },
-      { to: '/freelance-services', label: 'Freelance Services', icon: Briefcase },
       { to: '/affiliate-marketing', label: 'Affiliate Marketing', icon: Link2 },
       { to: '/ecommerce-retail', label: 'E-Commerce & Retail', icon: ShoppingCart },
     ],
@@ -55,6 +55,7 @@ const defaultSections: { title: string; items: Item[]; collapsible?: boolean }[]
       { to: '/digest', label: 'Digest', icon: Sunrise },
       { to: '/platforms', label: 'Platforms', icon: Globe2 },
       { to: '/schedules', label: 'Schedules', icon: CalendarClock },
+      { to: '/observability', label: 'Observability', icon: Eye },
       { to: '/history', label: 'History', icon: History },
       { to: '/settings', label: 'Settings', icon: SettingsIcon },
     ],

@@ -38,6 +38,8 @@ import { scoringRoutes } from './routes/scoring'
 import { podRoutes } from './routes/pod'
 import { browserActionRoutes } from './routes/browser-actions'
 import { hyperbeamRoutes } from './routes/hyperbeam'
+import { observabilityRoutes } from './routes/observability'
+import { freelanceRoutes } from './routes/freelance'
 
 // Create the main Hono app
 const app = new Hono<{ Bindings: Env }>()
@@ -124,6 +126,8 @@ api.route('/products', scoringRoutes)
 api.route('/pod', podRoutes)
 api.route('/browser', browserActionRoutes)
 api.route('/hyperbeam', hyperbeamRoutes)
+api.route('/observability', observabilityRoutes)
+api.route('/freelance', freelanceRoutes)
 
 // Mount API routes under /api
 app.route('/api', api)
